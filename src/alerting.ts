@@ -26,6 +26,8 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     if (modQueue.length >= alertThreshold) {
         console.log(`Alerting: Queue length of ${modQueue.length} is over threshold of ${alertThreshold}`);
         shouldAlert = true;
+    } else {
+        console.log(`Alerting: Queue length ${modQueue.length} is under threshold.`);
     }
 
     const queueItemAges = queueItemProps.map(x => new Date(x.queueDate));

@@ -34,7 +34,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             await recordActionDelay(itemId, secondsBeforeAction, context);
             await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
         } else {
-            console.log(`${itemId}: Approved, but item doesn't appear to have been in the queue.`);
+            console.log(`${itemId}: Approved by ${event.moderator.name}, but item doesn't appear to have been in the queue.`);
         }
     }
 
@@ -63,7 +63,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
                 await recordActionDelay(itemId, secondsBeforeAction, context);
                 await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
             } else {
-                console.log(`${itemId}: Removed, but item doesn't appear to have been in the queue.`);
+                console.log(`${itemId}: Removed by ${event.moderator.name}, but item doesn't appear to have been in the queue.`);
             }
         }
     }
