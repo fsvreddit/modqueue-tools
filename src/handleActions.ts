@@ -38,7 +38,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
         }
     }
 
-    if (event.action === "removelink" || event.action === "removecomment") {
+    if (event.action === "removelink" || event.action === "removecomment" || event.action === "spamlink" || event.action === "spamcomment") {
         const itemId = getItemIdFromModAction(event);
 
         if (event.moderator.name === "AutoModerator" || event.moderator.name === "reddit") {

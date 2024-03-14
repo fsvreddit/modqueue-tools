@@ -9,4 +9,9 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
         name: "analyseQueue",
         cron: "*/5 * * * *",
     });
+
+    await context.scheduler.runJob({
+        name: "buildAnalytics",
+        cron: "0 6 * * *",
+    });
 }

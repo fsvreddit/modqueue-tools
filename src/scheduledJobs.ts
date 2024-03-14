@@ -4,6 +4,7 @@ import {QueuedItemProperties} from "./handleActions.js";
 import _ from "lodash";
 import {FILTERED_ITEM_KEY, recordQueueLength} from "./redisHelper.js";
 import {checkAlerting} from "./alerting.js";
+import {refreshWikiPage} from "./analyticsWikiPage.js";
 
 export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
@@ -37,4 +38,8 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
     }
 
     await checkAlerting(modQueue, queueItemProps, context);
+}
+
+export async function buildAnalytics (_: ScheduledJobEvent, context: TriggerContext) {
+    await refreshWikiPage(context);
 }

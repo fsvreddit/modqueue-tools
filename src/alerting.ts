@@ -9,6 +9,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     const settings = await context.settings.getAll();
     const alertingEnabled = settings[Settings.EnableAlerts] as boolean;
     if (!alertingEnabled) {
+        console.log("Alerting: Alerting is disabled.");
         return;
     }
 
@@ -77,6 +78,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     }
 
     message += `\n* There are currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
+
     if (agedItems.length > 0) {
         message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} are over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.\n`;
     }
