@@ -18,7 +18,7 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
     console.log(`Queue length: ${modQueue.length}`);
     await recordQueueLength(modQueue.length, context);
 
-    let queueAges: Date[] | undefined;
+    let queueItemProps: QueuedItemProperties[] = [];
 
     // Get record of previously queued items.
     const potentiallyQueuedItems = await context.redis.hgetall(FILTERED_ITEM_KEY);
@@ -33,11 +33,8 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
             console.log(`${itemsRemoved} items removed from Redis set.`);
         }
 
-        const queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
-        if (queueItemProps.length > 0) {
-            queueAges = queueItemProps.map(x => new Date(x.queueDate));
-        }
+        queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
     }
 
-    await checkAlerting(modQueue, queueAges, context);
+    await checkAlerting(modQueue, queueItemProps, context);
 }

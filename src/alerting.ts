@@ -3,8 +3,9 @@ import {Settings} from "./settings.js";
 import {addDays, addHours, compareAsc} from "date-fns";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import pluralize from "pluralize";
+import {QueuedItemProperties} from "./handleActions.js";
 
-export async function checkAlerting (modQueue: (Post | Comment)[], queueItemAges: Date[] | undefined, context: TriggerContext) {
+export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
     const settings = await context.settings.getAll();
     const alertingEnabled = settings[Settings.EnableAlerts] as boolean;
     if (!alertingEnabled) {
@@ -26,6 +27,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemAges
         shouldAlert = true;
     }
 
+    const queueItemAges = queueItemProps.map(x => new Date(x.queueDate));
     let agedItems: Date[] = [];
     let oldestItem: Date | undefined;
     if (queueItemAges && queueItemAges.length > 0) {
@@ -67,11 +69,11 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemAges
 
     const subredditName = await getSubredditName(context);
 
-    const roleName = settings[Settings.RoleToPing] as string | undefined;
+    const roleId = settings[Settings.RoleToPing] as string | undefined;
 
     let message = `The modqueue on /r/${subredditName} needs attention.`;
-    if (roleName) {
-        message += ` <@&${roleName}>`;
+    if (roleId) {
+        message += ` <@&${roleId}>`;
     }
 
     message += `\n* There are currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
