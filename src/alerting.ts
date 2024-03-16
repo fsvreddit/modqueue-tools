@@ -1,7 +1,7 @@
 import {Comment, Post, TriggerContext} from "@devvit/public-api";
 import {Settings} from "./settings.js";
-import {addDays, addHours, compareAsc} from "date-fns";
-import {formatDurationToNow, getSubredditName} from "./utility.js";
+import {addDays, addHours} from "date-fns";
+import {ThingPrefix, formatDurationToNow, getSubredditName} from "./utility.js";
 import pluralize from "pluralize";
 import {QueuedItemProperties} from "./handleActions.js";
 
@@ -30,21 +30,21 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         console.log(`Alerting: Queue length ${modQueue.length} is under threshold.`);
     }
 
-    const queueItemAges = queueItemProps.map(x => new Date(x.queueDate));
-    let agedItems: Date[] = [];
-    let oldestItem: Date | undefined;
-    if (queueItemAges && queueItemAges.length > 0) {
-        agedItems = queueItemAges.filter(item => item < addHours(new Date(), -alertAgeHours));
-        oldestItem = queueItemAges.sort(compareAsc)[0];
+    // const queueItemAges = queueItemProps.map(x => new Date(x.queueDate));
+    let agedItems: QueuedItemProperties[] = [];
+    let oldestItem: QueuedItemProperties | undefined;
+    if (queueItemProps && queueItemProps.length > 0) {
+        agedItems = queueItemProps.filter(item => new Date(item.queueDate) < addHours(new Date(), -alertAgeHours));
+        oldestItem = queueItemProps.sort((a, b) => a.queueDate - b.queueDate)[0];
     }
 
-    if (agedItems.length > 0) {
+    if (agedItems.length > 0 && alertAgeHours) {
         console.log(`Alerting: Found ${agedItems.length} items over ${alertAgeHours} old`);
         shouldAlert = true;
     }
 
     if (oldestItem) {
-        console.log(`Alerting: Oldest item: ${formatDurationToNow(oldestItem)}`);
+        console.log(`Alerting: Oldest item: ${formatDurationToNow(new Date(oldestItem.queueDate))}`);
     }
 
     const redisKey = "PauseAlerting";
@@ -54,7 +54,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         console.log("Alerting: Alerting is paused due to previous alert being sent.");
         if (!shouldAlert) {
             const currentExpiry = await context.redis.expireTime(redisKey);
-            const fifteenMinutes = 15 * 60;
+            const fifteenMinutes = 15 * 60 - 30; // 30 seconds subtracted to prevent race conditions
             if (currentExpiry <= 0 || currentExpiry > fifteenMinutes) {
                 // No longer in an alerting period. Set timeout for 15 minutes to avoid back to back alerts
                 // when in the middle of a queue cleanout
@@ -74,18 +74,27 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     const roleId = settings[Settings.RoleToPing] as string | undefined;
 
-    let message = `The modqueue on /r/${subredditName} needs attention.`;
+    let message = `The [modqueue](https://www.reddit.com/r/${subredditName}/about/modqueue) on /r/${subredditName} needs attention.`;
     if (roleId) {
         message += ` <@&${roleId}>`;
     }
 
-    message += `\n* There are currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
+    message += `\n* There ${pluralize("is", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
 
     if (agedItems.length > 0) {
-        message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} are over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.\n`;
-    }
-    if (oldestItem) {
-        message += `* Oldest queue item: ${formatDurationToNow(oldestItem)}`;
+        message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} ${pluralize("is", modQueue.length)} over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.`;
+        if (oldestItem && oldestItem.itemId) {
+            let target: Post | Comment;
+            if (oldestItem.itemId.startsWith(ThingPrefix.Post)) {
+                target = await context.reddit.getPostById(oldestItem.itemId);
+            } else {
+                target = await context.reddit.getCommentById(oldestItem.itemId);
+            }
+            message += ` [Oldest item](https://www.reddit.com${target.permalink}).`;
+        }
+        message += "\n";
+    } else if (oldestItem) {
+        message += `* Oldest queue item: ${formatDurationToNow(new Date(oldestItem.queueDate))}`;
     }
 
     try {

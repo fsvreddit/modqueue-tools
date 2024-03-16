@@ -1,6 +1,15 @@
 import {TriggerContext} from "@devvit/public-api";
 import {FormatDurationOptions, Interval, addWeeks, differenceInSeconds, formatDuration, intervalToDuration} from "date-fns";
 
+export enum ThingPrefix {
+    Comment = "t1_",
+    Account = "t2_",
+    Post = "t3_",
+    Message = "t4_",
+    Subreddit = "t5_",
+    Award = "t6_"
+}
+
 export async function getSubredditName (context: TriggerContext): Promise<string> {
     const subredditName = await context.redis.get("subredditname");
     if (subredditName) {

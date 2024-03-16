@@ -5,6 +5,7 @@ import {FILTERED_ITEM_KEY, recordActionDelay} from "./redisHelper.js";
 import {formatDurationToNow} from "./utility.js";
 
 export interface QueuedItemProperties {
+    itemId?: string,
     reasonForQueue: "AutoModerator" | "reddit" | "report",
     queueDate: number,
 }
@@ -47,6 +48,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
             if (!existingValue) {
                 const props: QueuedItemProperties = {
+                    itemId,
                     reasonForQueue: event.moderator.name,
                     queueDate: event.actionedAt.getTime(),
                 };
@@ -73,6 +75,7 @@ async function handleReport (itemId: string, context: TriggerContext) {
     const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
     if (!existingValue) {
         const props: QueuedItemProperties = {
+            itemId,
             reasonForQueue: "report",
             queueDate: new Date().getTime(),
         };

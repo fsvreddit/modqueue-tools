@@ -23,14 +23,14 @@ export const appSettings: SettingsFormField[] = [
                 name: Settings.AlertThreshold,
                 type: "number",
                 label: "Queue size threshold",
-                defaultValue: 10,
+                defaultValue: 30,
             },
             {
                 name: Settings.AlertAgeHours,
                 type: "number",
                 label: "Item age threshold (hours)",
-                helpText: "Alert if there exists any queue items older than this",
-                defaultValue: 12,
+                helpText: "Alert if there exists any queue items older than this. Set to 0 to disable.",
+                defaultValue: 24,
             },
             {
                 name: Settings.DiscordWebhook,
