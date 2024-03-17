@@ -23,7 +23,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     const alertThreshold = settings[Settings.AlertThreshold] as number;
     const alertAgeHours = settings[Settings.AlertAgeHours] as number;
 
-    if (modQueue.length >= alertThreshold) {
+    if (alertThreshold && modQueue.length >= alertThreshold) {
         console.log(`Alerting: Queue length of ${modQueue.length} is over threshold of ${alertThreshold}`);
         shouldAlert = true;
     } else {
