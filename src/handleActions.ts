@@ -30,7 +30,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
         const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
         if (existingValue) {
             const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
-            const secondsBeforeAction = differenceInSeconds(new Date(), queueItemProps.queueDate);
+            const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
             console.log(`${itemId}: Approved by ${event.moderator.name}. Item actioned after ${formatDurationToNow(addSeconds(new Date(), -secondsBeforeAction))}`);
             await recordActionDelay(itemId, secondsBeforeAction, context);
             await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
@@ -60,7 +60,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
             if (existingValue) {
                 const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
-                const secondsBeforeAction = differenceInSeconds(new Date(), queueItemProps.queueDate);
+                const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
                 console.log(`${itemId}: Removed by ${event.moderator.name}. Item actioned after ${formatDurationToNow(addSeconds(new Date(), -secondsBeforeAction))}`);
                 await recordActionDelay(itemId, secondsBeforeAction, context);
                 await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
