@@ -1,9 +1,33 @@
 import {Comment, Post, TriggerContext} from "@devvit/public-api";
 import {Settings} from "./settings.js";
-import {addDays, addHours} from "date-fns";
+import {addDays, subHours} from "date-fns";
 import {ThingPrefix, formatDurationToNow, getSubredditName} from "./utility.js";
 import pluralize from "pluralize";
 import {QueuedItemProperties} from "./handleActions.js";
+import markdownEscape from "markdown-escape";
+
+interface QueuedPostCount {
+    postId: string,
+    count: number,
+}
+
+function getTopPost (queueItemProps: QueuedItemProperties[]): QueuedPostCount {
+    const postsInQueue: QueuedPostCount[] = [];
+    for (const item of queueItemProps) {
+        if (item.postId) {
+            const currentEntry = postsInQueue.find(x => x.postId === item.postId);
+            if (currentEntry) {
+                currentEntry.count++;
+            } else {
+                postsInQueue.push({
+                    postId: item.postId,
+                    count: 1,
+                });
+            }
+        }
+    }
+    return postsInQueue.sort((a, b) => b.count - a.count)[0];
+}
 
 export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
     const settings = await context.settings.getAll();
@@ -30,11 +54,10 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         console.log(`Alerting: Queue length ${modQueue.length} is under threshold.`);
     }
 
-    // const queueItemAges = queueItemProps.map(x => new Date(x.queueDate));
     let agedItems: QueuedItemProperties[] = [];
     let oldestItem: QueuedItemProperties | undefined;
     if (queueItemProps && queueItemProps.length > 0) {
-        agedItems = queueItemProps.filter(item => new Date(item.queueDate) < addHours(new Date(), -alertAgeHours));
+        agedItems = queueItemProps.filter(item => new Date(item.queueDate) < subHours(new Date(), alertAgeHours));
         oldestItem = queueItemProps.sort((a, b) => a.queueDate - b.queueDate)[0];
     }
 
@@ -94,7 +117,17 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         }
         message += "\n";
     } else if (oldestItem) {
-        message += `* Oldest queue item: ${formatDurationToNow(new Date(oldestItem.queueDate))}`;
+        message += `* Oldest queue item: ${formatDurationToNow(new Date(oldestItem.queueDate))}\n`;
+    }
+
+    // Check to see if one post represents more than a third of the modqueue
+    if (alertThreshold && modQueue.length >= alertThreshold) {
+        const topQueuePost = getTopPost(queueItemProps);
+        const percentageOfItemInQueue = Math.round(100 * topQueuePost.count / modQueue.length);
+        if (percentageOfItemInQueue > 40) {
+            const post = await context.reddit.getPostById(topQueuePost.postId);
+            message += `* Queue items from one post make up ${percentageOfItemInQueue}% of queue entries: [${markdownEscape(post.title)}](https://www.reddit.com${post.permalink})\n`;
+        }
     }
 
     try {

@@ -1,11 +1,12 @@
 import {TriggerContext} from "@devvit/public-api";
 import {ModAction, PostReport, CommentReport} from "@devvit/protos";
-import {addSeconds, differenceInSeconds} from "date-fns";
+import {differenceInSeconds, subSeconds} from "date-fns";
 import {FILTERED_ITEM_KEY, recordActionDelay} from "./redisHelper.js";
 import {formatDurationToNow} from "./utility.js";
 
 export interface QueuedItemProperties {
-    itemId?: string,
+    postId?: string,
+    itemId: string,
     reasonForQueue: "AutoModerator" | "reddit" | "report",
     queueDate: number,
 }
@@ -13,6 +14,16 @@ export interface QueuedItemProperties {
 function getItemIdFromModAction (event: ModAction): string {
     if (event.targetComment && event.targetComment.id) {
         return event.targetComment.id;
+    } else if (event.targetPost && event.targetPost.id) {
+        return event.targetPost.id;
+    } else {
+        throw new Error("Unexpected mod action type");
+    }
+}
+
+function getPostIdFromModAction (event: ModAction): string {
+    if (event.targetComment && event.targetComment.id) {
+        return event.targetComment.postId;
     } else if (event.targetPost && event.targetPost.id) {
         return event.targetPost.id;
     } else {
@@ -31,7 +42,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
         if (existingValue) {
             const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
             const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
-            console.log(`${itemId}: Approved by ${event.moderator.name}. Item actioned after ${formatDurationToNow(addSeconds(new Date(), -secondsBeforeAction))}`);
+            console.log(`${itemId}: Approved by ${event.moderator.name}. Item actioned after ${formatDurationToNow(subSeconds(new Date(), secondsBeforeAction))}`);
             await recordActionDelay(itemId, secondsBeforeAction, context);
             await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
         } else {
@@ -41,6 +52,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
 
     if (event.action === "removelink" || event.action === "removecomment" || event.action === "spamlink" || event.action === "spamcomment") {
         const itemId = getItemIdFromModAction(event);
+        const postId = getPostIdFromModAction(event);
 
         if (event.moderator.name === "AutoModerator" || event.moderator.name === "reddit") {
             // Action that might result in a modqueue item, so store in hash.
@@ -48,6 +60,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
             if (!existingValue) {
                 const props: QueuedItemProperties = {
+                    postId,
                     itemId,
                     reasonForQueue: event.moderator.name,
                     queueDate: event.actionedAt.getTime(),
@@ -61,7 +74,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             if (existingValue) {
                 const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
                 const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
-                console.log(`${itemId}: Removed by ${event.moderator.name}. Item actioned after ${formatDurationToNow(addSeconds(new Date(), -secondsBeforeAction))}`);
+                console.log(`${itemId}: Removed by ${event.moderator.name}. Item actioned after ${formatDurationToNow(subSeconds(new Date(), secondsBeforeAction))}`);
                 await recordActionDelay(itemId, secondsBeforeAction, context);
                 await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
             } else {
@@ -71,10 +84,11 @@ export async function handleModAction (event: ModAction, context: TriggerContext
     }
 }
 
-async function handleReport (itemId: string, context: TriggerContext) {
+async function handleReport (itemId: string, postId: string, context: TriggerContext) {
     const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
     if (!existingValue) {
         const props: QueuedItemProperties = {
+            postId,
             itemId,
             reasonForQueue: "report",
             queueDate: new Date().getTime(),
@@ -90,12 +104,12 @@ export async function handlePostReport (event: PostReport, context: TriggerConte
     if (!event.post) {
         return;
     }
-    await handleReport(event.post.id, context);
+    await handleReport(event.post.id, event.post.id, context);
 }
 
 export async function handleCommentReport (event: CommentReport, context: TriggerContext) {
     if (!event.comment) {
         return;
     }
-    await handleReport(event.comment.id, context);
+    await handleReport(event.comment.id, event.comment.postId, context);
 }
