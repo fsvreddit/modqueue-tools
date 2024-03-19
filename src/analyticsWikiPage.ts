@@ -7,12 +7,14 @@ import _ from "lodash";
 interface QueueLength {
     dateTime: Date,
     queueLength: number,
+    maxQueueLength: number,
     numSamples: number,
 }
 
 interface ActionDelay {
     dateTime: Date,
-    actionDelayInSeconds: number
+    actionDelayInSeconds: number,
+    maxActionDelayInSeconds: number,
     numSamples: number,
 }
 
@@ -46,6 +48,7 @@ function queueLengthRedisItemToObject (item: ZMember): QueueLength {
     return {
         dateTime: new Date(item.score),
         queueLength: parseFloat(queueLength),
+        maxQueueLength: parseFloat(queueLength),
         numSamples: parseInt(numSamples),
     };
 }
@@ -55,6 +58,7 @@ function actionDelayRedisItemToObject (item: ZMember): ActionDelay {
     return {
         dateTime: new Date(item.score),
         actionDelayInSeconds: parseFloat(actionDelayInSeconds),
+        maxActionDelayInSeconds: parseFloat(actionDelayInSeconds),
         numSamples: parseInt(numSamples),
     };
 }
@@ -93,9 +97,10 @@ export async function refreshWikiPage (context: TriggerContext) {
     const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
     if (last24HoursActionDelays.length > 0) {
         const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        const maximum = _.max(last24HoursActionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         pageContents += `* Mod actions in last 24 hours: ${_.sum(last24HoursActionDelays.map(x => x.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
+        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
         pageContents += "* No mod actions recorded in the last 24 hours.\n";
     }
@@ -113,9 +118,10 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     if (actionDelays.length > 0) {
         const samples = actionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        const maximum = _.max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         pageContents += `* Mod actions: ${actionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
+        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
         pageContents += "* No mod actions recorded.\n";
     }
