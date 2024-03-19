@@ -70,7 +70,6 @@ export async function refreshWikiPage (context: TriggerContext) {
     const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
 
     const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, -1);
-    console.log(actionDelayItems);
     const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
 
     if (queueLengths.length === 0) {
@@ -92,9 +91,7 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
     if (last24HoursActionDelays.length > 0) {
-        console.log(last24HoursActionDelays.length);
         const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
-        console.log(JSON.stringify(samples));
         pageContents += `* Mod actions in last 24 hours: ${last24HoursActionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
@@ -114,9 +111,10 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     if (last24HoursActionDelays.length > 0) {
+        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
         pageContents += `* Mod actions: ${actionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
-        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(actionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}))))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(actionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
+        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
     } else {
         pageContents += "* No mod actions recorded.\n";
     }
