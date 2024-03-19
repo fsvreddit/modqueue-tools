@@ -2,6 +2,7 @@ import {TriggerContext, WikiPage, WikiPagePermissionLevel, ZMember} from "@devvi
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, QUEUE_LENGTH_KEY} from "./redisHelper.js";
 import {subDays, subMonths, subSeconds} from "date-fns";
+import _ from "lodash";
 
 interface QueueLength {
     dateTime: Date,
@@ -33,7 +34,7 @@ export function average (input: AggregatedSample[]): number {
 }
 
 export function max (input: AggregatedSample[]): number {
-    return input.map(item => item.value).sort((a, b) => b - a)[0];
+    return _.max(input.map(item => item.value)) ?? 0;
 }
 
 function secondsToFormattedDuration (seconds: number): string {
@@ -92,7 +93,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
     if (last24HoursActionDelays.length > 0) {
         const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
-        pageContents += `* Mod actions in last 24 hours: ${last24HoursActionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
+        pageContents += `* Mod actions in last 24 hours: ${_.sum(last24HoursActionDelays.map(x => x.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
     } else {
@@ -110,8 +111,8 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += "* No queue lengths recorded in the last 24 hours.\n";
     }
 
-    if (last24HoursActionDelays.length > 0) {
-        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+    if (actionDelays.length > 0) {
+        const samples = actionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
         pageContents += `* Mod actions: ${actionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
