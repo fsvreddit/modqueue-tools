@@ -15,12 +15,12 @@ interface ActionDelay {
     numSamples: number,
 }
 
-interface AggregatedSample {
+export interface AggregatedSample {
     value: number,
     numSamples: number
 }
 
-function average (input: AggregatedSample[]): number {
+export function average (input: AggregatedSample[]): number {
     let total = 0;
     let numSamples = 0;
 
@@ -32,7 +32,7 @@ function average (input: AggregatedSample[]): number {
     return total / numSamples;
 }
 
-function max (input: AggregatedSample[]): number {
+export function max (input: AggregatedSample[]): number {
     return input.map(item => item.value).sort((a, b) => b - a)[0];
 }
 
@@ -50,7 +50,7 @@ function queueLengthRedisItemToObject (item: ZMember): QueueLength {
 }
 
 function actionDelayRedisItemToObject (item: ZMember): ActionDelay {
-    const [, actionDelayInSeconds, numSamples = "1"] = item.member.split("~");
+    const [, , actionDelayInSeconds, numSamples = "1"] = item.member.split("~");
     return {
         dateTime: new Date(item.score),
         actionDelayInSeconds: parseFloat(actionDelayInSeconds),
@@ -70,6 +70,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
 
     const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, -1);
+    console.log(actionDelayItems);
     const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
 
     if (queueLengths.length === 0) {
@@ -91,9 +92,12 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
     if (last24HoursActionDelays.length > 0) {
+        console.log(last24HoursActionDelays.length);
+        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        console.log(JSON.stringify(samples));
         pageContents += `* Mod actions in last 24 hours: ${last24HoursActionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
-        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}))))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
+        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(max(samples))}\n`;
     } else {
         pageContents += "* No mod actions recorded in the last 24 hours.\n";
     }
