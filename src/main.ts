@@ -5,7 +5,6 @@ import {handleCommentReport, handleModAction, handlePostReport} from "./handleAc
 import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
 import {onAppInstallOrUpgrade} from "./installTasks.js";
 import {refreshWikiPage} from "./analyticsWikiPage.js";
-import {aggregateOlderData} from "./aggregator.js";
 
 Devvit.addSettings(appSettings);
 
