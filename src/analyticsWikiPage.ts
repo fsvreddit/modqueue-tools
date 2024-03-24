@@ -1,81 +1,43 @@
-import {TriggerContext, WikiPage, WikiPagePermissionLevel, ZMember} from "@devvit/public-api";
+import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
-import {ACTION_DELAY_KEY, QUEUE_LENGTH_KEY} from "./redisHelper.js";
-import {subDays, subMonths, subSeconds} from "date-fns";
+import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
+import {subDays, subSeconds} from "date-fns";
+import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
-
-interface QueueLength {
-    dateTime: Date,
-    queueLength: number,
-    maxQueueLength: number,
-    numSamples: number,
-}
-
-interface ActionDelay {
-    dateTime: Date,
-    actionDelayInSeconds: number,
-    maxActionDelayInSeconds: number,
-    numSamples: number,
-}
-
-export interface AggregatedSample {
-    value: number,
-    numSamples: number
-}
-
-export function average (input: AggregatedSample[]): number {
-    let total = 0;
-    let numSamples = 0;
-
-    for (const item of input) {
-        total += item.value * item.numSamples;
-        numSamples += item.numSamples;
-    }
-
-    return total / numSamples;
-}
-
-export function max (input: AggregatedSample[]): number {
-    return _.max(input.map(item => item.value)) ?? 0;
-}
 
 function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
 }
 
-function queueLengthRedisItemToObject (item: ZMember): QueueLength {
-    const [, queueLength, numSamples = "1"] = item.member.split("~");
-    return {
-        dateTime: new Date(item.score),
-        queueLength: parseFloat(queueLength),
-        maxQueueLength: parseFloat(queueLength),
-        numSamples: parseInt(numSamples),
-    };
+async function getQueueLengths (context: TriggerContext): Promise<QueueLength[]> {
+    const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, -1);
+    const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
+    console.log(queueLengths.length);
+    const aggregatedItems = await context.redis.hgetall(QUEUE_LENGTH_KEY_HOURLY);
+    if (aggregatedItems) {
+        queueLengths.push(...Object.values(aggregatedItems).map(x => JSON.parse(x) as QueueLength));
+    }
+    console.log(queueLengths.length);
+    return queueLengths;
 }
 
-function actionDelayRedisItemToObject (item: ZMember): ActionDelay {
-    const [, , actionDelayInSeconds, numSamples = "1"] = item.member.split("~");
-    return {
-        dateTime: new Date(item.score),
-        actionDelayInSeconds: parseFloat(actionDelayInSeconds),
-        maxActionDelayInSeconds: parseFloat(actionDelayInSeconds),
-        numSamples: parseInt(numSamples),
-    };
+async function getActionDelays (context: TriggerContext): Promise<ActionDelay[]> {
+    const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, -1);
+    const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
+
+    const aggregatedItems = await context.redis.hgetall(ACTION_DELAY_KEY_HOURLY);
+    if (aggregatedItems) {
+        actionDelays.push(...Object.values(aggregatedItems).map(x => JSON.parse(x) as ActionDelay));
+    }
+
+    return actionDelays;
 }
 
 export async function refreshWikiPage (context: TriggerContext) {
     const wikiPageName = "modqueue-tools/queuestats";
 
-    // Remove entries older than three months from Redis.
-    const logCutoff = subMonths(new Date(), 3).getTime();
-    await context.redis.zRemRangeByScore(QUEUE_LENGTH_KEY, 0, logCutoff);
-    await context.redis.zRemRangeByScore(ACTION_DELAY_KEY, 0, logCutoff);
-
-    const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, -1);
-    const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
-
-    const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, -1);
-    const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
+    const queueLengths = await getQueueLengths(context);
+    const actionDelays = await getActionDelays(context);
 
     if (queueLengths.length === 0) {
         // No data. Return.
@@ -87,7 +49,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const last24Hours = subDays(new Date(), 1);
     const last24HoursQueueLengths = queueLengths.filter(item => item.dateTime > last24Hours);
     if (last24HoursQueueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.floor(average(last24HoursQueueLengths.map(item => (<AggregatedSample>{value: item.queueLength, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average queue length: ${Math.floor(average(last24HoursQueueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
         const peakQueueLength = last24HoursQueueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
         pageContents += `* Peak queue length: ${Math.floor(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
     } else {
@@ -96,7 +58,7 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
     if (last24HoursActionDelays.length > 0) {
-        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
         const maximum = _.max(last24HoursActionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         pageContents += `* Mod actions in last 24 hours: ${_.sum(last24HoursActionDelays.map(x => x.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
@@ -105,11 +67,16 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += "* No mod actions recorded in the last 24 hours.\n";
     }
 
-    const earliestTimeRecorded = queueLengths.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime()).map(item => item.dateTime)[0];
-    pageContents += `\nSince ${earliestTimeRecorded.toUTCString()}\n\n`;
+    const earliestTimeRecorded = _.min(queueLengths.map(x => x.dateTime));
+
+    if (earliestTimeRecorded) {
+        pageContents += `\nSince ${earliestTimeRecorded.toUTCString()}:\n\n`;
+    } else {
+        pageContents += "\nSince app install:\n\n";
+    }
 
     if (queueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.floor(average(queueLengths.map(item => (<AggregatedSample>{value: item.queueLength, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average queue length: ${Math.floor(average(queueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
         const peakQueueLength = queueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
         pageContents += `* Peak queue length: ${peakQueueLength.queueLength} at ${peakQueueLength.dateTime.toUTCString()}\n`;
     } else {
@@ -117,7 +84,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     if (actionDelays.length > 0) {
-        const samples = actionDelays.map(item => (<AggregatedSample>{value: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        const samples = actionDelays.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
         const maximum = _.max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         pageContents += `* Mod actions: ${actionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;

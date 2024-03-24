@@ -14,4 +14,9 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
         name: "buildAnalytics",
         cron: "0 6 * * *",
     });
+
+    await context.scheduler.runJob({
+        name: "aggregateStorage",
+        cron: "0 5 * * *",
+    });
 }

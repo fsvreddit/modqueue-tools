@@ -43,7 +43,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
             const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
             const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
             console.log(`${itemId}: Approved by ${event.moderator.name}. Item actioned after ${formatDurationToNow(subSeconds(new Date(), secondsBeforeAction))}`);
-            await recordActionDelay(itemId, secondsBeforeAction, context);
+            await recordActionDelay(event.actionedAt, itemId, secondsBeforeAction, context);
             await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
         } else {
             console.log(`${itemId}: Approved by ${event.moderator.name}, but item doesn't appear to have been in the queue.`);
@@ -75,7 +75,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
                 const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
                 const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);
                 console.log(`${itemId}: Removed by ${event.moderator.name}. Item actioned after ${formatDurationToNow(subSeconds(new Date(), secondsBeforeAction))}`);
-                await recordActionDelay(itemId, secondsBeforeAction, context);
+                await recordActionDelay(event.actionedAt, itemId, secondsBeforeAction, context);
                 await context.redis.hdel(FILTERED_ITEM_KEY, [itemId]);
             } else {
                 console.log(`${itemId}: Removed by ${event.moderator.name}, but item doesn't appear to have been in the queue.`);

@@ -5,6 +5,7 @@ import _ from "lodash";
 import {FILTERED_ITEM_KEY, recordQueueLength} from "./redisHelper.js";
 import {checkAlerting} from "./alerting.js";
 import {refreshWikiPage} from "./analyticsWikiPage.js";
+import {aggregateOlderData} from "./aggregator.js";
 
 export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
@@ -42,4 +43,8 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
 
 export async function buildAnalytics (_: ScheduledJobEvent, context: TriggerContext) {
     await refreshWikiPage(context);
+}
+
+export async function aggregateStorage (_: ScheduledJobEvent, context: TriggerContext) {
+    await aggregateOlderData(context);
 }

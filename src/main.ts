@@ -2,9 +2,10 @@
 import {Devvit} from "@devvit/public-api";
 import {appSettings} from "./settings.js";
 import {handleCommentReport, handleModAction, handlePostReport} from "./handleActions.js";
-import {analyseQueue, buildAnalytics} from "./scheduledJobs.js";
+import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
 import {onAppInstallOrUpgrade} from "./installTasks.js";
 import {refreshWikiPage} from "./analyticsWikiPage.js";
+import {aggregateOlderData} from "./aggregator.js";
 
 Devvit.addSettings(appSettings);
 
@@ -33,6 +34,11 @@ Devvit.addSchedulerJob({
     onRun: buildAnalytics,
 });
 
+Devvit.addSchedulerJob({
+    name: "aggregateStorage",
+    onRun: aggregateStorage,
+});
+
 Devvit.addTrigger({
     events: ["AppInstall", "AppUpgrade"],
     onEvent: onAppInstallOrUpgrade,
@@ -42,7 +48,7 @@ Devvit.addMenuItem({
     label: "Build Analytics",
     forUserType: "moderator",
     location: "subreddit",
-    onPress: async (event, context) => {
+    onPress: async (_, context) => {
         await refreshWikiPage(context);
     },
 });
