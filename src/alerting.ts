@@ -97,7 +97,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     const roleId = settings[Settings.RoleToPing] as string | undefined;
 
-    let message = `The [modqueue](https://www.reddit.com/r/${subredditName}/about/modqueue) on /r/${subredditName} needs attention.`;
+    let message = `The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} needs attention.`;
     if (roleId) {
         message += ` <@&${roleId}>`;
     }
@@ -113,7 +113,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
             } else {
                 target = await context.reddit.getCommentById(oldestItem.itemId);
             }
-            message += ` [Oldest item](https://www.reddit.com${target.permalink}).`;
+            message += ` [Oldest item](<https://www.reddit.com${target.permalink}>).`;
         }
         message += "\n";
     } else if (oldestItem) {
