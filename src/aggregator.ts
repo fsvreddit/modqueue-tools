@@ -9,10 +9,10 @@ export async function aggregateOlderData (context: TriggerContext) {
     console.log(`Aggregator: Starting aggregation for data older than ${aggregateByHoursEndpoint.toUTCString()}`);
 
     const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, aggregateByHoursEndpoint.getTime(), {by: "score"});
-    const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
+    const queueLengths = queueLengthItems.map(queueLengthRedisItemToObject);
 
     const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, aggregateByHoursEndpoint.getTime(), {by: "score"});
-    const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
+    const actionDelays = actionDelayItems.map(actionDelayRedisItemToObject);
 
     const minDate = _.min([...queueLengths.map(x => x.dateTime), ...actionDelays.map(x => x.dateTime)]);
 

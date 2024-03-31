@@ -23,7 +23,7 @@ async function getQueueLengths (context: TriggerContext): Promise<QueueLength[]>
 
 async function getActionDelays (context: TriggerContext): Promise<ActionDelay[]> {
     const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, -1);
-    const actionDelays = actionDelayItems.map(item => actionDelayRedisItemToObject(item));
+    const actionDelays = actionDelayItems.map(actionDelayRedisItemToObject);
 
     const aggregatedItems = await context.redis.hgetall(ACTION_DELAY_KEY_HOURLY);
     if (aggregatedItems) {
