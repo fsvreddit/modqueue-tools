@@ -5,7 +5,7 @@ import {FILTERED_ITEM_KEY, recordActionDelay} from "./redisHelper.js";
 import {formatDurationToNow} from "./utility.js";
 
 export interface QueuedItemProperties {
-    postId?: string,
+    postId: string,
     itemId: string,
     reasonForQueue: "AutoModerator" | "reddit" | "report",
     queueDate: number,

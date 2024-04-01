@@ -5,6 +5,7 @@ import {ThingPrefix, formatDurationToNow, getSubredditName} from "./utility.js";
 import pluralize from "pluralize";
 import {QueuedItemProperties} from "./handleActions.js";
 import markdownEscape from "markdown-escape";
+import _ from "lodash";
 
 interface QueuedPostCount {
     postId: string,
@@ -12,20 +13,8 @@ interface QueuedPostCount {
 }
 
 function getTopPost (queueItemProps: QueuedItemProperties[]): QueuedPostCount {
-    const postsInQueue: QueuedPostCount[] = [];
-    for (const item of queueItemProps) {
-        if (item.postId) {
-            const currentEntry = postsInQueue.find(x => x.postId === item.postId);
-            if (currentEntry) {
-                currentEntry.count++;
-            } else {
-                postsInQueue.push({
-                    postId: item.postId,
-                    count: 1,
-                });
-            }
-        }
-    }
+    const countedPosts = _.countBy(queueItemProps.map(item => item.postId));
+    const postsInQueue = Object.keys(countedPosts).map(postId => <QueuedPostCount>{postId, count: countedPosts[postId]});
     return postsInQueue.sort((a, b) => b.count - a.count)[0];
 }
 
