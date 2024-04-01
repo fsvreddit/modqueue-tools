@@ -1,7 +1,7 @@
 import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {subDays, subSeconds} from "date-fns";
+import {differenceInMilliseconds, subDays, subSeconds} from "date-fns";
 import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
@@ -12,12 +12,10 @@ function secondsToFormattedDuration (seconds: number): string {
 async function getQueueLengths (context: TriggerContext): Promise<QueueLength[]> {
     const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, -1);
     const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
-    console.log(queueLengths.length);
     const aggregatedItems = await context.redis.hgetall(QUEUE_LENGTH_KEY_HOURLY);
     if (aggregatedItems) {
         queueLengths.push(...Object.values(aggregatedItems).map(x => JSON.parse(x) as QueueLength));
     }
-    console.log(queueLengths.length);
     return queueLengths;
 }
 
@@ -35,6 +33,7 @@ async function getActionDelays (context: TriggerContext): Promise<ActionDelay[]>
 
 export async function refreshWikiPage (context: TriggerContext) {
     const wikiPageName = "modqueue-tools/queuestats";
+    const startTime = new Date();
 
     const queueLengths = await getQueueLengths(context);
     const actionDelays = await getActionDelays(context);
@@ -94,6 +93,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere.\n\n";
+    pageContents += `^(This page was generated in ${differenceInMilliseconds(new Date(), startTime)} ms)\n\n`;
 
     const subredditName = await getSubredditName(context);
 
