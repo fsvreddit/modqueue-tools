@@ -20,8 +20,7 @@ function getTopPost (queueItemProps: QueuedItemProperties[]): QueuedPostCount {
 
 export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
     const settings = await context.settings.getAll();
-    const alertingEnabled = settings[Settings.EnableAlerts] as boolean;
-    if (!alertingEnabled) {
+    if (!settings[Settings.EnableAlerts]) {
         console.log("Alerting: Alerting is disabled.");
         return;
     }
@@ -45,7 +44,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     let agedItems: QueuedItemProperties[] = [];
     let oldestItem: QueuedItemProperties | undefined;
-    if (queueItemProps && queueItemProps.length > 0) {
+    if (alertAgeHours && queueItemProps && queueItemProps.length > 0) {
         agedItems = queueItemProps.filter(item => new Date(item.queueDate) < subHours(new Date(), alertAgeHours));
         oldestItem = queueItemProps.sort((a, b) => a.queueDate - b.queueDate)[0];
     }
