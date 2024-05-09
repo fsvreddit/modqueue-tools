@@ -1,6 +1,6 @@
 import {SettingsFormField} from "@devvit/public-api";
 
-export enum Settings {
+export enum AppSetting {
     EnableAlerts = "enableAlerts",
     AlertThreshold = "alertThreshold",
     AlertAgeHours = "alertAgeHours",
@@ -14,26 +14,26 @@ export const appSettings: SettingsFormField[] = [
         label: "Alerting Options",
         fields: [
             {
-                name: Settings.EnableAlerts,
+                name: AppSetting.EnableAlerts,
                 type: "boolean",
                 label: "Enable Alerting",
                 defaultValue: false,
             },
             {
-                name: Settings.AlertThreshold,
+                name: AppSetting.AlertThreshold,
                 type: "number",
                 label: "Queue size threshold",
                 defaultValue: 30,
             },
             {
-                name: Settings.AlertAgeHours,
+                name: AppSetting.AlertAgeHours,
                 type: "number",
                 label: "Item age threshold (hours)",
                 helpText: "Alert if there exists any queue items older than this. Set to 0 to disable.",
                 defaultValue: 24,
             },
             {
-                name: Settings.DiscordWebhook,
+                name: AppSetting.DiscordWebhook,
                 type: "string",
                 label: "Discord webhook URL",
                 onValidate: ({value}) => {
@@ -44,7 +44,7 @@ export const appSettings: SettingsFormField[] = [
                 },
             },
             {
-                name: Settings.RoleToPing,
+                name: AppSetting.RoleToPing,
                 type: "string",
                 label: "Discord Role ID to ping (optional)",
                 helpText: "To identify the role's ID, type \\@rolename in a channel on your server. Copy the number.",

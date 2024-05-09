@@ -1,5 +1,5 @@
 import {Comment, Post, TriggerContext} from "@devvit/public-api";
-import {Settings} from "./settings.js";
+import {AppSetting} from "./settings.js";
 import {addDays, subHours} from "date-fns";
 import {ThingPrefix, formatDurationToNow, getSubredditName} from "./utility.js";
 import pluralize from "pluralize";
@@ -20,20 +20,20 @@ function getTopPost (queueItemProps: QueuedItemProperties[]): QueuedPostCount {
 
 export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
     const settings = await context.settings.getAll();
-    if (!settings[Settings.EnableAlerts]) {
+    if (!settings[AppSetting.EnableAlerts]) {
         console.log("Alerting: Alerting is disabled.");
         return;
     }
 
-    const discordWebhookUrl = settings[Settings.DiscordWebhook] as string;
+    const discordWebhookUrl = settings[AppSetting.DiscordWebhook] as string;
     if (!discordWebhookUrl) {
         console.log("Alerting: Webhook is not set up!");
         return;
     }
 
     let shouldAlert = false;
-    const alertThreshold = settings[Settings.AlertThreshold] as number;
-    const alertAgeHours = settings[Settings.AlertAgeHours] as number;
+    const alertThreshold = settings[AppSetting.AlertThreshold] as number;
+    const alertAgeHours = settings[AppSetting.AlertAgeHours] as number;
 
     if (alertThreshold && modQueue.length >= alertThreshold) {
         console.log(`Alerting: Queue length of ${modQueue.length} is over threshold of ${alertThreshold}`);
@@ -83,7 +83,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     const subredditName = await getSubredditName(context);
 
-    const roleId = settings[Settings.RoleToPing] as string | undefined;
+    const roleId = settings[AppSetting.RoleToPing] as string | undefined;
 
     let message = `The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} needs attention.`;
     if (roleId) {
