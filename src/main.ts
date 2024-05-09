@@ -5,7 +5,6 @@ import {handleCommentReport, handleModAction, handlePostReport} from "./handleAc
 import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
 import {onAppInstallOrUpgrade} from "./installTasks.js";
 import {refreshWikiPage} from "./analyticsWikiPage.js";
-import {getSubredditName} from "./utility.js";
 
 Devvit.addSettings(appSettings);
 
