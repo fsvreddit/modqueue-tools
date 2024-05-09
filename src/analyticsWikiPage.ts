@@ -9,12 +9,32 @@ function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
 }
 
+function aggregateObjectToQueueLength (item: string): QueueLength {
+    const asObject = JSON.parse(item) as QueueLength;
+    return {
+        dateTime: new Date(asObject.dateTime),
+        maxQueueLength: asObject.maxQueueLength,
+        numSamples: asObject.numSamples,
+        queueLength: asObject.queueLength,
+    };
+}
+
+function aggregateObjectToActionDelay (item: string): ActionDelay {
+    const asObject = JSON.parse(item) as ActionDelay;
+    return {
+        dateTime: new Date(asObject.dateTime),
+        actionDelayInSeconds: asObject.actionDelayInSeconds,
+        numSamples: asObject.numSamples,
+        maxActionDelayInSeconds: asObject.maxActionDelayInSeconds,
+    };
+}
+
 async function getQueueLengths (context: TriggerContext): Promise<QueueLength[]> {
     const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, -1);
     const queueLengths = queueLengthItems.map(item => queueLengthRedisItemToObject(item));
     const aggregatedItems = await context.redis.hgetall(QUEUE_LENGTH_KEY_HOURLY);
     if (aggregatedItems) {
-        queueLengths.push(...Object.values(aggregatedItems).map(x => JSON.parse(x) as QueueLength));
+        queueLengths.push(...Object.values(aggregatedItems).map(aggregateObjectToQueueLength));
     }
     return queueLengths;
 }
@@ -25,7 +45,7 @@ async function getActionDelays (context: TriggerContext): Promise<ActionDelay[]>
 
     const aggregatedItems = await context.redis.hgetall(ACTION_DELAY_KEY_HOURLY);
     if (aggregatedItems) {
-        actionDelays.push(...Object.values(aggregatedItems).map(x => JSON.parse(x) as ActionDelay));
+        actionDelays.push(...Object.values(aggregatedItems).map(aggregateObjectToActionDelay));
     }
 
     return actionDelays;
@@ -48,9 +68,9 @@ export async function refreshWikiPage (context: TriggerContext) {
     const last24Hours = subDays(new Date(), 1);
     const last24HoursQueueLengths = queueLengths.filter(item => item.dateTime > last24Hours);
     if (last24HoursQueueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.floor(average(last24HoursQueueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average queue length: ${Math.round(average(last24HoursQueueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
         const peakQueueLength = last24HoursQueueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
-        pageContents += `* Peak queue length: ${Math.floor(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
+        pageContents += `* Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
     } else {
         pageContents += "* No queue lengths recorded in the last 24 hours.\n";
     }
@@ -75,9 +95,9 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     if (queueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.floor(average(queueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
+        pageContents += `* Average queue length: ${Math.round(average(queueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
         const peakQueueLength = queueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
-        pageContents += `* Peak queue length: ${peakQueueLength.queueLength} at ${peakQueueLength.dateTime.toUTCString()}\n`;
+        pageContents += `* Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
     } else {
         pageContents += "* No queue lengths recorded in the last 24 hours.\n";
     }
