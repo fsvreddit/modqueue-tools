@@ -5,6 +5,7 @@ import {handleCommentReport, handleModAction, handlePostReport} from "./handleAc
 import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
 import {onAppInstallOrUpgrade} from "./installTasks.js";
 import {refreshWikiPage} from "./analyticsWikiPage.js";
+import {getSubredditName} from "./utility.js";
 
 Devvit.addSettings(appSettings);
 
@@ -49,6 +50,7 @@ Devvit.addMenuItem({
     location: "subreddit",
     onPress: async (_, context) => {
         await refreshWikiPage(context);
+        context.ui.showToast("Wiki page has been updated.");
     },
 });
 

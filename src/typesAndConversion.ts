@@ -42,17 +42,29 @@ export function actionDelayRedisItemToObject (item: ZMember): ActionDelay {
 }
 
 export function average (input: AggregatedSample[]): number {
-    let total = 0;
-    let numSamples = 0;
-
-    for (const item of input) {
-        total += item.meanValue * item.numSamples;
-        numSamples += item.numSamples;
-    }
-
-    return total / numSamples;
+    return _.sum(input.map(item => item.meanValue * item.numSamples)) / _.sum(input.map(item => item.numSamples));
 }
 
 export function max (input: AggregatedSample[]): number {
     return _.max(input.map(item => item.maxValue)) ?? 0;
+}
+
+export function aggregateObjectToQueueLength (item: string): QueueLength {
+    const asObject = JSON.parse(item) as QueueLength;
+    return {
+        dateTime: new Date(asObject.dateTime),
+        maxQueueLength: asObject.maxQueueLength,
+        numSamples: asObject.numSamples,
+        queueLength: asObject.queueLength,
+    };
+}
+
+export function aggregateObjectToActionDelay (item: string): ActionDelay {
+    const asObject = JSON.parse(item) as ActionDelay;
+    return {
+        dateTime: new Date(asObject.dateTime),
+        actionDelayInSeconds: asObject.actionDelayInSeconds,
+        numSamples: asObject.numSamples,
+        maxActionDelayInSeconds: asObject.maxActionDelayInSeconds,
+    };
 }

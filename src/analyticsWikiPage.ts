@@ -2,31 +2,11 @@ import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
 import {differenceInMilliseconds, subDays, subSeconds} from "date-fns";
-import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
+import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
 function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
-}
-
-function aggregateObjectToQueueLength (item: string): QueueLength {
-    const asObject = JSON.parse(item) as QueueLength;
-    return {
-        dateTime: new Date(asObject.dateTime),
-        maxQueueLength: asObject.maxQueueLength,
-        numSamples: asObject.numSamples,
-        queueLength: asObject.queueLength,
-    };
-}
-
-function aggregateObjectToActionDelay (item: string): ActionDelay {
-    const asObject = JSON.parse(item) as ActionDelay;
-    return {
-        dateTime: new Date(asObject.dateTime),
-        actionDelayInSeconds: asObject.actionDelayInSeconds,
-        numSamples: asObject.numSamples,
-        maxActionDelayInSeconds: asObject.maxActionDelayInSeconds,
-    };
 }
 
 async function getQueueLengths (context: TriggerContext): Promise<QueueLength[]> {
@@ -105,7 +85,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     if (actionDelays.length > 0) {
         const samples = actionDelays.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
         const maximum = _.max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
-        pageContents += `* Mod actions: ${actionDelays.length} (excludes AutoModerator and Reddit actions)\n`;
+        pageContents += `* Mod actions: ${_.sum(actionDelays.map(item => item.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
