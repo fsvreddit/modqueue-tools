@@ -1,7 +1,7 @@
 import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {differenceInMilliseconds, subDays, subSeconds} from "date-fns";
+import {differenceInHours, differenceInMilliseconds, subDays, subSeconds} from "date-fns";
 import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
@@ -86,6 +86,9 @@ export async function refreshWikiPage (context: TriggerContext) {
         const samples = actionDelays.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
         const maximum = _.max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         pageContents += `* Mod actions: ${_.sum(actionDelays.map(item => item.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
+        if (earliestTimeRecorded) {
+            pageContents += `* Average actions/day: ${Math.round(_.sum(actionDelays.map(item => item.numSamples)) / differenceInHours(new Date(), earliestTimeRecorded) * 24)}\n`;
+        }
         pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
