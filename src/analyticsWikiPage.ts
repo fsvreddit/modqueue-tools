@@ -57,29 +57,29 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     let pageContents = "# Modqueue Statistics\n\n";
 
-    pageContents += "Last 24 hours\n\n";
-    const last24Hours = subDays(new Date(), 1);
-    const last24HoursQueueLengths = queueLengths.filter(item => item.dateTime > last24Hours);
-    if (last24HoursQueueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.round(average(last24HoursQueueLengths.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))))}\n`;
-        const peakQueueLength = last24HoursQueueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
-        pageContents += `* Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
-    } else {
-        pageContents += "* No queue lengths recorded in the last 24 hours.\n";
-    }
-
-    const last24HoursActionDelays = actionDelays.filter(item => item.dateTime > last24Hours);
-    if (last24HoursActionDelays.length > 0) {
-        const samples = last24HoursActionDelays.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
-        const maximum = _.max(last24HoursActionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
-        pageContents += `* Mod actions in last 24 hours: ${_.sum(last24HoursActionDelays.map(x => x.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
-        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
-    } else {
-        pageContents += "* No mod actions recorded in the last 24 hours.\n";
-    }
-
     const earliestTimeRecorded = _.min(queueLengths.map(x => x.dateTime));
+
+    const daysForSummaryTable = 28;
+    const summaryStart = _.max([earliestTimeRecorded, subDays(new Date(), daysForSummaryTable)]) ?? subDays(new Date(), daysForSummaryTable);
+    const days = eachDayOfInterval({start: summaryStart, end: subDays(new Date(), 1)}).sort(compareDesc);
+
+    const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
+
+    pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
+    pageContents += "- | - | - | - | - | -\n";
+
+    for (const day of days) {
+        const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
+        const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
+
+        const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))));
+        const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
+        const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}))));
+        const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
+        const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
+
+        pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
+    }
 
     if (earliestTimeRecorded) {
         pageContents += `\nSince ${earliestTimeRecorded.toUTCString()}:\n\n`;
@@ -108,29 +108,7 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += "* No mod actions recorded.\n";
     }
 
-    const daysForSummaryTable = 28;
-    const summaryStart = _.max([earliestTimeRecorded, subDays(new Date(), daysForSummaryTable)]) ?? subDays(new Date(), daysForSummaryTable);
-    const days = eachDayOfInterval({start: summaryStart, end: subDays(new Date(), 1)}).sort(compareDesc);
-
-    const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
-
-    pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
-    pageContents += "- | - | - | - | - | -\n";
-
-    for (const day of days) {
-        const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
-        const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
-
-        const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))));
-        const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
-        const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}))));
-        const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
-        const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
-
-        pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
-    }
-
-    pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere.\n\n";
+    pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC.\n\n";
     pageContents += `^(This page was generated in ${differenceInMilliseconds(new Date(), startTime)} ms)\n\n`;
 
     const subredditName = await getSubredditName(context);
