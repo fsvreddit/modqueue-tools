@@ -1,10 +1,16 @@
-Modqueue Tools
-
 Provides analytics and alerting for modqueues.
 
 ## Analytics
 
 This app updates a wiki page (modqueue-tools/queuestats) on your subreddit once a day with statistics on queue lengths and queue action times for the last 24 hours and for the last three months (or the app install date, whichever is later).
+
+It also includes a table with data for every day for the past 28 days.
+
+All times are in UTC.
+
+[Example analytics page](https://www.reddit.com/r/fsvapps/wiki/modqueue-tools/examplestats) - note this will not render properly in the Reddit mobile app.
+
+The app will only report on queue activity after the app is installed, so to get the best out of the analytics you will need to wait a few days.
 
 ## Alerting
 
