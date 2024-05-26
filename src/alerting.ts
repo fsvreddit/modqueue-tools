@@ -117,7 +117,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         for (const item of topQueuePosts) {
             // eslint-disable-next-line no-await-in-loop
             const post = await context.reddit.getPostById(item.postId);
-            message += `* Queue items from one post make up ${Math.round(100 * item.count / modQueue.length)}% of queue entries: [${markdownEscape(post.title)}](https://www.reddit.com${post.permalink})\n`;
+            message += `* Queue items from one post make up ${Math.round(100 * item.count / modQueue.length)}% of queue entries: [${markdownEscape(post.title)}](<https://www.reddit.com${post.permalink}>)\n`;
         }
     }
 
