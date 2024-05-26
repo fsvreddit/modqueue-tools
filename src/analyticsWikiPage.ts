@@ -38,37 +38,8 @@ function numberToBlocks (number: number, maximum: number) {
 
     const maxBlocks = 6;
     const blockCount = maxBlocks * number / maximum;
-    const subBlock = Math.floor(8 * (number % maximum) / maximum);
-    let finalCharacter: string;
-    switch (subBlock) {
-        case 0:
-            finalCharacter = "";
-            break;
-        case 1:
-            finalCharacter = "▏";
-            break;
-        case 2:
-            finalCharacter = "▎";
-            break;
-        case 3:
-            finalCharacter = "▍";
-            break;
-        case 4:
-            finalCharacter = "▌";
-            break;
-        case 5:
-            finalCharacter = "▋";
-            break;
-        case 6:
-            finalCharacter = "▊";
-            break;
-        case 7:
-            finalCharacter = "▉";
-            break;
-        default:
-            finalCharacter = "";
-            break;
-    }
+    const subBlock = blockCount % 1;
+    const finalCharacter = subBlock >= 0.5 ? "▌" : "";
 
     return "█".repeat(Math.floor(blockCount)) + finalCharacter;
 }
