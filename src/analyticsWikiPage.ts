@@ -1,7 +1,7 @@
 import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {differenceInHours, differenceInMilliseconds, subDays, subSeconds} from "date-fns";
+import {compareDesc, differenceInHours, differenceInMilliseconds, eachDayOfInterval, isSameDay, subDays, subSeconds} from "date-fns";
 import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
@@ -29,6 +29,48 @@ async function getActionDelays (context: TriggerContext): Promise<ActionDelay[]>
     }
 
     return actionDelays;
+}
+
+function numberToBlocks (number: number, maximum: number) {
+    if (maximum === 0) {
+        return "";
+    }
+
+    const maxBlocks = 6;
+    const blockCount = maxBlocks * number / maximum;
+    const subBlock = Math.floor(8 * (number % maximum) / maximum);
+    let finalCharacter: string;
+    switch (subBlock) {
+        case 0:
+            finalCharacter = "";
+            break;
+        case 1:
+            finalCharacter = "▏";
+            break;
+        case 2:
+            finalCharacter = "▎";
+            break;
+        case 3:
+            finalCharacter = "▍";
+            break;
+        case 4:
+            finalCharacter = "▌";
+            break;
+        case 5:
+            finalCharacter = "▋";
+            break;
+        case 6:
+            finalCharacter = "▊";
+            break;
+        case 7:
+            finalCharacter = "▉";
+            break;
+        default:
+            finalCharacter = "";
+            break;
+    }
+
+    return "█".repeat(Math.floor(blockCount)) + finalCharacter;
 }
 
 export async function refreshWikiPage (context: TriggerContext) {
@@ -93,6 +135,28 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
         pageContents += "* No mod actions recorded.\n";
+    }
+
+    const daysForSummaryTable = 28;
+    const summaryStart = _.max([earliestTimeRecorded, subDays(new Date(), daysForSummaryTable)]) ?? subDays(new Date(), daysForSummaryTable);
+    const days = eachDayOfInterval({start: summaryStart, end: subDays(new Date(), 1)}).sort(compareDesc);
+
+    const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
+
+    pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
+    pageContents += "- | - | - | - | - | -\n";
+
+    for (const day of days) {
+        const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
+        const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
+
+        const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))));
+        const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
+        const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}))));
+        const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
+        const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
+
+        pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
     }
 
     pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere.\n\n";
