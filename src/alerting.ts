@@ -12,10 +12,11 @@ interface QueuedPostCount {
     count: number,
 }
 
-function getTopPost (queueItemProps: QueuedItemProperties[]): QueuedPostCount {
+function getTopPosts (queueItemProps: QueuedItemProperties[], threshold: number): QueuedPostCount[] {
     const countedPosts = _.countBy(queueItemProps.map(item => item.postId));
     const postsInQueue = Object.keys(countedPosts).map(postId => <QueuedPostCount>{postId, count: countedPosts[postId]});
-    return postsInQueue.sort((a, b) => b.count - a.count)[0];
+
+    return postsInQueue.filter(item => Math.round(100 * item.count / queueItemProps.length) >= threshold).sort((a, b) => b.count - a.count);
 }
 
 export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
@@ -108,13 +109,15 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         message += `* Oldest queue item: ${formatDurationToNow(new Date(oldestItem.queueDate))}\n`;
     }
 
-    // Check to see if one post represents more than a third of the modqueue
-    if (alertThreshold && modQueue.length >= alertThreshold) {
-        const topQueuePost = getTopPost(queueItemProps);
-        const percentageOfItemInQueue = Math.round(100 * topQueuePost.count / modQueue.length);
-        if (percentageOfItemInQueue > 40) {
-            const post = await context.reddit.getPostById(topQueuePost.postId);
-            message += `* Queue items from one post make up ${percentageOfItemInQueue}% of queue entries: [${markdownEscape(post.title)}](https://www.reddit.com${post.permalink})\n`;
+    const alertThresholdForIndividualPosts = settings[AppSetting.AlertThresholdForIndividualPosts] as number | undefined;
+
+    // Check to see if any posts represent a large proportion of the modqueue
+    if (alertThreshold && alertThresholdForIndividualPosts && modQueue.length >= alertThreshold) {
+        const topQueuePosts = getTopPosts(queueItemProps, alertThresholdForIndividualPosts);
+        for (const item of topQueuePosts) {
+            // eslint-disable-next-line no-await-in-loop
+            const post = await context.reddit.getPostById(item.postId);
+            message += `* Queue items from one post make up ${Math.round(100 * item.count / modQueue.length)}% of queue entries: [${markdownEscape(post.title)}](https://www.reddit.com${post.permalink})\n`;
         }
     }
 

@@ -4,6 +4,7 @@ export enum AppSetting {
     EnableAlerts = "enableAlerts",
     AlertThreshold = "alertThreshold",
     AlertAgeHours = "alertAgeHours",
+    AlertThresholdForIndividualPosts = "alertThresholdForIndividualPosts",
     DiscordWebhook = "discordWebhook",
     RoleToPing = "roleToPing",
 }
@@ -33,9 +34,17 @@ export const appSettings: SettingsFormField[] = [
                 defaultValue: 24,
             },
             {
+                name: AppSetting.AlertThresholdForIndividualPosts,
+                type: "number",
+                label: "Individual post alert threshold",
+                helpText: "If a post's comments take up more than this percentage of the total queue, include it in the alert. Set to 0 to disable.",
+                defaultValue: 40,
+            },
+            {
                 name: AppSetting.DiscordWebhook,
                 type: "string",
                 label: "Discord webhook URL",
+                placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
                 onValidate: ({value}) => {
                     const webhookRegex = /^https:\/\/discord.com\/api\/webhooks\/\d+\//;
                     if (value && !webhookRegex.test(value)) {
