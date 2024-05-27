@@ -14,7 +14,7 @@ The app will only report on queue activity after the app is installed, so to get
 
 ## Alerting
 
-You can specify a threshold (number of queue items) and queue item age (in hours). The app will alert moderators via a Discord webhook if either the queue size is reached or a single item in the queue has been there for too long.
+You can specify a threshold (number of queue items) and (optionally) a queue item age (in hours). The app will alert moderators via a Discord webhook if either the queue size is reached or a single item in the queue has been there for too long.
 
 The app checks the queue every 5 minutes, and will send a message if needed, but while the queue stays too large (or has too old items), further messages won't be sent until the queue is dealt with and the length is reduced, or the older items are actioned.
 

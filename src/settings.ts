@@ -25,6 +25,11 @@ export const appSettings: SettingsFormField[] = [
                 type: "number",
                 label: "Queue size threshold",
                 defaultValue: 30,
+                onValidate: ({value}) => {
+                    if (!value || value < 1) {
+                        return "Queue size threshold must be at least 1.";
+                    }
+                },
             },
             {
                 name: AppSetting.AlertAgeHours,
@@ -32,6 +37,11 @@ export const appSettings: SettingsFormField[] = [
                 label: "Item age threshold (hours)",
                 helpText: "Alert if there exists any queue items older than this. Set to 0 to disable.",
                 defaultValue: 24,
+                onValidate: ({value}) => {
+                    if (value && value < 0) {
+                        return "Item age threshold must be at least 0.";
+                    }
+                },
             },
             {
                 name: AppSetting.AlertThresholdForIndividualPosts,
@@ -39,6 +49,11 @@ export const appSettings: SettingsFormField[] = [
                 label: "Individual post alert threshold",
                 helpText: "If a post's comments take up more than this percentage of the total queue, include it in the alert. Set to 0 to disable.",
                 defaultValue: 40,
+                onValidate: ({value}) => {
+                    if (value && value < 0) {
+                        return "Individual post alert threshold age threshold must be at least 0.";
+                    }
+                },
             },
             {
                 name: AppSetting.DiscordWebhook,
