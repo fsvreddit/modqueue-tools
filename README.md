@@ -10,7 +10,7 @@ All times are in UTC.
 
 [Example analytics page](https://www.reddit.com/r/fsvapps/wiki/modqueue-tools/examplestats) - note this will not render properly in the Reddit mobile app.
 
-The app will only report on queue activity after the app is installed, so to get the best out of the analytics you will need to wait a few days.
+The app will only report on queue activity after the app is installed, so to get the best out of the analytics you will need to wait a few days. The analytics page updates once a day, shortly after midnight UTC.
 
 ## Alerting
 
