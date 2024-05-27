@@ -1,7 +1,7 @@
 import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {compareDesc, differenceInHours, differenceInMilliseconds, eachDayOfInterval, isSameDay, subDays, subSeconds} from "date-fns";
+import {compareDesc, differenceInHours, eachDayOfInterval, isSameDay, subDays, subSeconds} from "date-fns";
 import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
