@@ -21,3 +21,7 @@ The app checks the queue every 5 minutes, and will send a message if needed, but
 You can also configure a percentage threshold for when an individual post will show in the alert.
 
 ![Example Screenshot](https://raw.githubusercontent.com/fsvreddit/modqueue-tools/main/doc_images/ModqueueAlert.png)
+
+## About
+
+This app is open source. You can find it on Github [here](https://github.com/fsvreddit/modqueue-tools).
