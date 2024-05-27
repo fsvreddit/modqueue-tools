@@ -51,6 +51,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const actionDelays = await getActionDelays(context);
 
     if (queueLengths.length === 0) {
+        console.log("No data exists. Skipping wiki page update.");
         // No data. Return.
     }
 
@@ -64,20 +65,24 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
 
-    pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
-    pageContents += "- | - | - | - | - | -\n";
+    if (days.length) {
+        pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
+        pageContents += "- | - | - | - | - | -\n";
 
-    for (const day of days) {
-        const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
-        const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
+        for (const day of days) {
+            const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
+            const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
 
-        const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))));
-        const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
-        const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}))));
-        const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
-        const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
+            if (queueLengthsForDay.length) {
+                const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}))));
+                const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
+                const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}))));
+                const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
+                const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
 
-        pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
+                pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
+            }
+        }
     }
 
     if (earliestTimeRecorded) {
