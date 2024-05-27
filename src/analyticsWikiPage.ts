@@ -46,7 +46,6 @@ function numberToBlocks (number: number, maximum: number) {
 
 export async function refreshWikiPage (context: TriggerContext) {
     const wikiPageName = "modqueue-tools/queuestats";
-    const startTime = new Date();
 
     const queueLengths = await getQueueLengths(context);
     const actionDelays = await getActionDelays(context);
@@ -109,7 +108,6 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC.\n\n";
-    pageContents += `^(This page was generated in ${differenceInMilliseconds(new Date(), startTime)} ms)\n\n`;
 
     const subredditName = await getSubredditName(context);
 
