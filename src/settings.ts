@@ -18,7 +18,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.EnableAlerts,
                 type: "boolean",
                 label: "Enable Alerting",
-                defaultValue: false,
+                defaultValue: true,
             },
             {
                 name: AppSetting.AlertThreshold,
