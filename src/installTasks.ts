@@ -12,7 +12,7 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
 
     await context.scheduler.runJob({
         name: "buildAnalytics",
-        cron: "0 6 * * *",
+        cron: "1 0 * * *",
     });
 
     await context.scheduler.runJob({
