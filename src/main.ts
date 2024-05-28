@@ -4,7 +4,6 @@ import {appSettings} from "./settings.js";
 import {handleCommentReport, handleModAction, handlePostReport} from "./handleActions.js";
 import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
 import {onAppInstallOrUpgrade} from "./installTasks.js";
-import {refreshWikiPage} from "./analyticsWikiPage.js";
 
 Devvit.addSettings(appSettings);
 
@@ -41,16 +40,6 @@ Devvit.addSchedulerJob({
 Devvit.addTrigger({
     events: ["AppInstall", "AppUpgrade"],
     onEvent: onAppInstallOrUpgrade,
-});
-
-Devvit.addMenuItem({
-    label: "Build Analytics",
-    forUserType: "moderator",
-    location: "subreddit",
-    onPress: async (_, context) => {
-        await refreshWikiPage(context);
-        context.ui.showToast("Wiki page has been updated.");
-    },
 });
 
 Devvit.configure({
