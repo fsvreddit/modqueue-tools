@@ -28,4 +28,4 @@ This app is open source. You can find it on Github [here](https://github.com/fsv
 
 ## Version History
 
-v1.0.2: Fixed three bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page.
+v1.0.3: Fixed three bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. Also clarified help text on settings.

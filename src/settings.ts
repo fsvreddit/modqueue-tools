@@ -24,6 +24,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.AlertThreshold,
                 type: "number",
                 label: "Queue size threshold",
+                helpText: "Alert if the number of posts or comments in the queue is this number or higher.",
                 defaultValue: 30,
                 onValidate: ({value}) => {
                     if (!value || value < 1) {
@@ -35,7 +36,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.AlertAgeHours,
                 type: "number",
                 label: "Item age threshold (hours)",
-                helpText: "Alert if there exists any queue items older than this. Set to 0 to disable.",
+                helpText: "Alert if there exists any post or comment that has been in the queue longer than this. Set to 0 to disable.",
                 defaultValue: 24,
                 onValidate: ({value}) => {
                     if (value && value < 0) {
@@ -59,6 +60,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.DiscordWebhook,
                 type: "string",
                 label: "Discord webhook URL",
+                helpText: "The URL of the Discord webhook to send alerts to. Get this from your Discord server's settings.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
                 onValidate: ({value}) => {
                     const webhookRegex = /^https:\/\/discord.com\/api\/webhooks\/\d+\//;
