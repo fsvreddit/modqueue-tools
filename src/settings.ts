@@ -36,7 +36,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.AlertAgeHours,
                 type: "number",
                 label: "Item age threshold (hours)",
-                helpText: "Alert if there exists any post or comment that has been in the queue longer than this. Set to 0 to disable.",
+                helpText: "Alert if any post or comment has been in the queue longer than this number of hours. Set to 0 to disable.",
                 defaultValue: 24,
                 onValidate: ({value}) => {
                     if (value && value < 0) {
@@ -47,8 +47,8 @@ export const appSettings: SettingsFormField[] = [
             {
                 name: AppSetting.AlertThresholdForIndividualPosts,
                 type: "number",
-                label: "Individual post alert threshold",
-                helpText: "If a post's comments take up more than this percentage of the total queue, include it in the alert. Set to 0 to disable.",
+                label: "Individual post alert threshold %",
+                helpText: "If an individual post is dominating the modqueue by taking up more than this percentage of queued items, include it in the alert. Set to 0 to disable.",
                 defaultValue: 40,
                 onValidate: ({value}) => {
                     if (value && value < 0) {
@@ -60,7 +60,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.DiscordWebhook,
                 type: "string",
                 label: "Discord webhook URL",
-                helpText: "The URL of the Discord webhook to send alerts to. Get this from your Discord server's settings.",
+                helpText: "The URL of the Discord webhook to send alerts to. Get this from your Discord server's settings or channel settings.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
                 onValidate: ({value}) => {
                     const webhookRegex = /^https:\/\/discord.com\/api\/webhooks\/\d+\//;

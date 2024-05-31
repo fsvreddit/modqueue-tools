@@ -22,10 +22,12 @@ You can also configure a percentage threshold for when an individual post will s
 
 ![Example Screenshot](https://raw.githubusercontent.com/fsvreddit/modqueue-tools/main/doc_images/ModqueueAlert.png)
 
+For a guide on how to set up a webhook, [see here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
+
 ## About
 
 This app is open source. You can find it on Github [here](https://github.com/fsvreddit/modqueue-tools).
 
 ## Version History
 
-v1.0.4: Fixed three bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. Also clarified help text on settings.
+v1.0.5: Fixed three bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. Also clarified help text on settings.
