@@ -12,11 +12,12 @@ interface QueuedPostCount {
     count: number,
 }
 
-function getTopPosts (queueItemProps: QueuedItemProperties[], threshold: number): QueuedPostCount[] {
-    const countedPosts = _.countBy(queueItemProps.map(item => item.postId));
+function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
+    const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
+    const countedPosts = _.countBy(postIdList);
     const postsInQueue = Object.keys(countedPosts).map(postId => <QueuedPostCount>{postId, count: countedPosts[postId]});
 
-    return postsInQueue.filter(item => Math.round(100 * item.count / queueItemProps.length) >= threshold).sort((a, b) => b.count - a.count);
+    return postsInQueue.filter(item => Math.round(100 * item.count / modQueue.length) >= threshold).sort((a, b) => b.count - a.count);
 }
 
 export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
@@ -113,7 +114,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     // Check to see if any posts represent a large proportion of the modqueue
     if (alertThreshold && alertThresholdForIndividualPosts && modQueue.length >= alertThreshold) {
-        const topQueuePosts = getTopPosts(queueItemProps, alertThresholdForIndividualPosts);
+        const topQueuePosts = getTopPosts(modQueue, alertThresholdForIndividualPosts);
         for (const item of topQueuePosts) {
             // eslint-disable-next-line no-await-in-loop
             const post = await context.reddit.getPostById(item.postId);
