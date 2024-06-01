@@ -3,6 +3,7 @@ import {AppInstall, AppUpgrade} from "@devvit/protos";
 import {getSubredditName} from "./utility.js";
 import {QueuedItemProperties} from "./handleActions.js";
 import {FILTERED_ITEM_KEY} from "./redisHelper.js";
+import {refreshWikiPage} from "./analyticsWikiPage.js";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
@@ -22,6 +23,8 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
         name: "aggregateStorage",
         cron: "0 5 * * *",
     });
+
+    await refreshWikiPage(context);
 }
 
 /**
@@ -29,7 +32,7 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
  * by Automod or Reddit. This means that initial alerts and mod actions have a much
  * more accurate item ages.
  */
-export async function onAppInstall (_: AppInstall, context: TriggerContext) {
+export async function onAppInstall (event: AppInstall, context: TriggerContext) {
     const modqueue = await context.reddit.getModQueue({
         subreddit: await getSubredditName(context),
         type: "all",
@@ -52,5 +55,5 @@ export async function onAppInstall (_: AppInstall, context: TriggerContext) {
 
     console.log(filteredItems);
 
-    await onAppInstallOrUpgrade(_, context);
+    await onAppInstallOrUpgrade(event, context);
 }
