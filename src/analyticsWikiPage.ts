@@ -64,6 +64,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const days = eachDayOfInterval({start: summaryStart, end: subDays(new Date(), 1)}).sort(compareDesc);
 
     const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
+    const queueBarMax = _.max([maxQueueLength, 10]) ?? 10;
 
     if (days.length) {
         pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
@@ -80,7 +81,7 @@ export async function refreshWikiPage (context: TriggerContext) {
                 const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
                 const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
 
-                pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), maxQueueLength)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
+                pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), queueBarMax)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
             }
         }
     }
