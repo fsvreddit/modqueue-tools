@@ -38,7 +38,9 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
         queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
     }
 
-    await checkAlerting(modQueue, queueItemProps, context);
+    if (modQueue.length > 0) {
+        await checkAlerting(modQueue, queueItemProps, context);
+    }
 }
 
 export async function buildAnalytics (_: ScheduledJobEvent, context: TriggerContext) {
