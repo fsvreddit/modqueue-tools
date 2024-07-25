@@ -12,9 +12,9 @@ export interface QueuedItemProperties {
 }
 
 function getItemIdFromModAction (event: ModAction): string {
-    if (event.targetComment && event.targetComment.id) {
+    if (event.targetComment?.id) {
         return event.targetComment.id;
-    } else if (event.targetPost && event.targetPost.id) {
+    } else if (event.targetPost?.id) {
         return event.targetPost.id;
     } else {
         throw new Error("Unexpected mod action type");
@@ -22,9 +22,9 @@ function getItemIdFromModAction (event: ModAction): string {
 }
 
 function getPostIdFromModAction (event: ModAction): string {
-    if (event.targetComment && event.targetComment.id) {
+    if (event.targetComment?.id) {
         return event.targetComment.postId;
-    } else if (event.targetPost && event.targetPost.id) {
+    } else if (event.targetPost?.id) {
         return event.targetPost.id;
     } else {
         throw new Error("Unexpected mod action type");
