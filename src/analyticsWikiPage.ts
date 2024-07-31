@@ -113,13 +113,18 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += "* No mod actions recorded.\n";
     }
 
-    pageContents += "\n##Time of day statistics\n\nThis covers the last four weeks worth of data.";
+    pageContents += "\n##Time of day statistics\n\nThis covers the last four weeks worth of data.\n\n";
     pageContents += "Hour | Average Queue Size | Average Action Count | Average Action Delay\n-|-|-|-|\n";
 
     const maxBar = _.max([...queueLengths.filter(x => x.dateTime > summaryStart).map(x => x.maxQueueLength), ...actionDelays.filter(x => x.dateTime > summaryStart).map(x => x.numSamples)]) ?? 0;
     for (let hour = 0; hour < 24; hour++) {
         const queueSizeSamples = queueLengths.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}));
         const actionCountSamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.numSamples, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        if (actionCountSamples.length < queueSizeSamples.length) {
+            for (let x = 0; x < queueSizeSamples.length - actionCountSamples.length; x++) {
+                actionCountSamples.push({maxValue: 0, meanValue: 0, numSamples: average(actionCountSamples)});
+            }
+        }
         const actionDelaySamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
         pageContents += `${hour} | ${numberToBlocks(average(queueSizeSamples), maxBar)} ${Math.round(average(queueSizeSamples))} | ${numberToBlocks(average(actionCountSamples), maxBar)} ${Math.round(average(actionCountSamples))} | ${secondsToFormattedDuration(average(actionDelaySamples))}\n`;
     }
