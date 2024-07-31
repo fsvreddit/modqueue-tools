@@ -1,7 +1,7 @@
 import {TriggerContext, WikiPage, WikiPagePermissionLevel} from "@devvit/public-api";
 import {formatDurationToNow, getSubredditName} from "./utility.js";
 import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {compareDesc, differenceInHours, eachDayOfInterval, isSameDay, subDays, subSeconds} from "date-fns";
+import {compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds} from "date-fns";
 import {ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject} from "./typesAndConversion.js";
 import _ from "lodash";
 
@@ -111,6 +111,17 @@ export async function refreshWikiPage (context: TriggerContext) {
         pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
     } else {
         pageContents += "* No mod actions recorded.\n";
+    }
+
+    pageContents += "\n##Time of day statistics\n\nThis covers the last four weeks worth of data.";
+    pageContents += "Hour | Average Queue Size | Average Action Count | Average Action Delay\n-|-|-|-|\n";
+
+    const maxBar = _.max([...queueLengths.filter(x => x.dateTime > summaryStart).map(x => x.maxQueueLength), ...actionDelays.filter(x => x.dateTime > summaryStart).map(x => x.numSamples)]) ?? 0;
+    for (let hour = 0; hour < 24; hour++) {
+        const queueSizeSamples = queueLengths.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples}));
+        const actionCountSamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.numSamples, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        const actionDelaySamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => (<AggregatedSample>{meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples}));
+        pageContents += `${hour} | ${numberToBlocks(average(queueSizeSamples), maxBar)} ${Math.round(average(queueSizeSamples))} | ${numberToBlocks(average(actionCountSamples), maxBar)} ${Math.round(average(actionCountSamples))} | ${secondsToFormattedDuration(average(actionDelaySamples))}\n`;
     }
 
     pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC.\n\n";
