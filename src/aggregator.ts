@@ -52,13 +52,11 @@ export async function aggregateOlderData (context: TriggerContext) {
     console.log(`Aggregator: Action delay samples: ${actionDelays.length} to aggregates: ${aggregatedActionDelays.length}`);
 
     for (const item of aggregatedQueueLengths) {
-        // eslint-disable-next-line no-await-in-loop
-        await context.redis.hset(QUEUE_LENGTH_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
+        await context.redis.hSet(QUEUE_LENGTH_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
     }
 
     for (const item of aggregatedActionDelays) {
-        // eslint-disable-next-line no-await-in-loop
-        await context.redis.hset(ACTION_DELAY_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
+        await context.redis.hSet(ACTION_DELAY_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
     }
 
     await context.redis.zRemRangeByScore(QUEUE_LENGTH_KEY, 0, aggregateByHoursEndpoint.getTime());
