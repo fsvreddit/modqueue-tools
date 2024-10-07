@@ -1,24 +1,24 @@
-import {ZMember} from "@devvit/public-api";
+import { ZMember } from "@devvit/public-api";
 import _ from "lodash";
 
 export interface QueueLength {
-    dateTime: Date,
-    queueLength: number,
-    maxQueueLength: number,
-    numSamples: number,
+    dateTime: Date;
+    queueLength: number;
+    maxQueueLength: number;
+    numSamples: number;
 }
 
 export interface ActionDelay {
-    dateTime: Date,
-    actionDelayInSeconds: number,
-    maxActionDelayInSeconds: number,
-    numSamples: number,
+    dateTime: Date;
+    actionDelayInSeconds: number;
+    maxActionDelayInSeconds: number;
+    numSamples: number;
 }
 
 export interface AggregatedSample {
-    meanValue: number,
-    maxValue: number,
-    numSamples: number
+    meanValue: number;
+    maxValue: number;
+    numSamples: number;
 }
 
 export function queueLengthRedisItemToObject (item: ZMember): QueueLength {

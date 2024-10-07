@@ -1,9 +1,8 @@
-
-import {Devvit} from "@devvit/public-api";
-import {appSettings} from "./settings.js";
-import {handleCommentReport, handleModAction, handlePostReport} from "./handleActions.js";
-import {aggregateStorage, analyseQueue, buildAnalytics} from "./scheduledJobs.js";
-import {onAppInstall, onAppInstallOrUpgrade} from "./installTasks.js";
+import { Devvit } from "@devvit/public-api";
+import { appSettings } from "./settings.js";
+import { handleCommentReport, handleModAction, handlePostReport } from "./handleActions.js";
+import { aggregateStorage, analyseQueue, buildAnalytics } from "./scheduledJobs.js";
+import { onAppInstall, onAppInstallOrUpgrade } from "./installTasks.js";
 
 Devvit.addSettings(appSettings);
 

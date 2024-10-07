@@ -1,14 +1,14 @@
-import {TriggerContext} from "@devvit/public-api";
-import {ModAction, PostReport, CommentReport} from "@devvit/protos";
-import {differenceInSeconds, subSeconds} from "date-fns";
-import {FILTERED_ITEM_KEY, recordActionDelay} from "./redisHelper.js";
-import {formatDurationToNow} from "./utility.js";
+import { TriggerContext } from "@devvit/public-api";
+import { ModAction, PostReport, CommentReport } from "@devvit/protos";
+import { differenceInSeconds, subSeconds } from "date-fns";
+import { FILTERED_ITEM_KEY, recordActionDelay } from "./redisHelper.js";
+import { formatDurationToNow } from "./utility.js";
 
 export interface QueuedItemProperties {
-    postId: string,
-    itemId: string,
-    reasonForQueue: "AutoModerator" | "reddit" | "report",
-    queueDate: number,
+    postId: string;
+    itemId: string;
+    reasonForQueue: "AutoModerator" | "reddit" | "report";
+    queueDate: number;
 }
 
 function getItemIdFromModAction (event: ModAction): string {
@@ -65,7 +65,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
                     reasonForQueue: event.moderator.name,
                     queueDate: event.actionedAt.getTime(),
                 };
-                await context.redis.hSet(FILTERED_ITEM_KEY, {[itemId]: JSON.stringify(props)});
+                await context.redis.hSet(FILTERED_ITEM_KEY, { [itemId]: JSON.stringify(props) });
                 console.log(`${itemId}: Removed by ${event.moderator.name} so may be queued. Added to Redis.`);
             }
         } else {
@@ -93,7 +93,7 @@ async function handleReport (itemId: string, postId: string, context: TriggerCon
             reasonForQueue: "report",
             queueDate: new Date().getTime(),
         };
-        await context.redis.hSet(FILTERED_ITEM_KEY, {[itemId]: JSON.stringify(props)});
+        await context.redis.hSet(FILTERED_ITEM_KEY, { [itemId]: JSON.stringify(props) });
         console.log(`${itemId}: Reported. Added to Redis store.`);
     } else {
         console.log(`${itemId}: Reported, but was already in Redis store.`);

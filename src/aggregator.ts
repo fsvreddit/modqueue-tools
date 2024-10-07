@@ -1,17 +1,17 @@
-import {TriggerContext} from "@devvit/public-api";
-import {addDays, addHours, eachHourOfInterval, startOfDay, subWeeks} from "date-fns";
-import {ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY} from "./redisHelper.js";
-import {ActionDelay, QueueLength, actionDelayRedisItemToObject, queueLengthRedisItemToObject} from "./typesAndConversion.js";
+import { TriggerContext } from "@devvit/public-api";
+import { addDays, addHours, eachHourOfInterval, startOfDay, subWeeks } from "date-fns";
+import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
+import { ActionDelay, QueueLength, actionDelayRedisItemToObject, queueLengthRedisItemToObject } from "./typesAndConversion.js";
 import _ from "lodash";
 
 export async function aggregateOlderData (context: TriggerContext) {
     const aggregateByHoursEndpoint = subWeeks(startOfDay(new Date()), 1);
     console.log(`Aggregator: Starting aggregation for data older than ${aggregateByHoursEndpoint.toUTCString()}`);
 
-    const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, aggregateByHoursEndpoint.getTime(), {by: "score"});
+    const queueLengthItems = await context.redis.zRange(QUEUE_LENGTH_KEY, 0, aggregateByHoursEndpoint.getTime(), { by: "score" });
     const queueLengths = queueLengthItems.map(queueLengthRedisItemToObject);
 
-    const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, aggregateByHoursEndpoint.getTime(), {by: "score"});
+    const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, aggregateByHoursEndpoint.getTime(), { by: "score" });
     const actionDelays = actionDelayItems.map(actionDelayRedisItemToObject);
 
     const minDate = _.min([...queueLengths.map(x => x.dateTime), ...actionDelays.map(x => x.dateTime)]);
@@ -21,7 +21,7 @@ export async function aggregateOlderData (context: TriggerContext) {
         return;
     }
 
-    const slices = eachHourOfInterval({start: startOfDay(minDate), end: startOfDay(addDays(aggregateByHoursEndpoint, 1))});
+    const slices = eachHourOfInterval({ start: startOfDay(minDate), end: startOfDay(addDays(aggregateByHoursEndpoint, 1)) });
 
     const aggregatedQueueLengths: QueueLength[] = [];
     const aggregatedActionDelays: ActionDelay[] = [];
@@ -52,11 +52,11 @@ export async function aggregateOlderData (context: TriggerContext) {
     console.log(`Aggregator: Action delay samples: ${actionDelays.length} to aggregates: ${aggregatedActionDelays.length}`);
 
     for (const item of aggregatedQueueLengths) {
-        await context.redis.hSet(QUEUE_LENGTH_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
+        await context.redis.hSet(QUEUE_LENGTH_KEY_HOURLY, { [item.dateTime.toString()]: JSON.stringify(item) });
     }
 
     for (const item of aggregatedActionDelays) {
-        await context.redis.hSet(ACTION_DELAY_KEY_HOURLY, {[item.dateTime.toString()]: JSON.stringify(item)});
+        await context.redis.hSet(ACTION_DELAY_KEY_HOURLY, { [item.dateTime.toString()]: JSON.stringify(item) });
     }
 
     await context.redis.zRemRangeByScore(QUEUE_LENGTH_KEY, 0, aggregateByHoursEndpoint.getTime());

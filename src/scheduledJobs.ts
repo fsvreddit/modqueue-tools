@@ -1,13 +1,13 @@
-import {ScheduledJobEvent, TriggerContext} from "@devvit/public-api";
-import {getSubredditName} from "./utility.js";
-import {QueuedItemProperties} from "./handleActions.js";
+import { JSONObject, ScheduledJobEvent, TriggerContext } from "@devvit/public-api";
+import { getSubredditName } from "./utility.js";
+import { QueuedItemProperties } from "./handleActions.js";
 import _ from "lodash";
-import {FILTERED_ITEM_KEY, recordQueueLength} from "./redisHelper.js";
-import {checkAlerting} from "./alerting.js";
-import {refreshWikiPage} from "./analyticsWikiPage.js";
-import {aggregateOlderData} from "./aggregator.js";
+import { FILTERED_ITEM_KEY, recordQueueLength } from "./redisHelper.js";
+import { checkAlerting } from "./alerting.js";
+import { refreshWikiPage } from "./analyticsWikiPage.js";
+import { aggregateOlderData } from "./aggregator.js";
 
-export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerContext) {
+export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
 
     // Get current modqueue
@@ -19,8 +19,6 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
 
     console.log(`Queue length: ${modQueue.length}`);
     await recordQueueLength(modQueue.length, context);
-
-    let queueItemProps: QueuedItemProperties[] = [];
 
     // Get record of previously queued items.
     const potentiallyQueuedItems = await context.redis.hGetAll(FILTERED_ITEM_KEY);
@@ -35,17 +33,17 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
         console.log(`${itemsRemoved} items removed from Redis set.`);
     }
 
-    queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
+    const queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
 
     if (modQueue.length > 0) {
         await checkAlerting(modQueue, queueItemProps, context);
     }
 }
 
-export async function buildAnalytics (_: ScheduledJobEvent, context: TriggerContext) {
+export async function buildAnalytics (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
     await refreshWikiPage(context);
 }
 
-export async function aggregateStorage (_: ScheduledJobEvent, context: TriggerContext) {
+export async function aggregateStorage (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
     await aggregateOlderData(context);
 }
