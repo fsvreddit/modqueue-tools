@@ -10,7 +10,7 @@ import {aggregateOlderData} from "./aggregator.js";
 export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
 
-    // Get current modqueue
+    // Get current mo dqueue
     const modQueue = await context.reddit.getModQueue({
         subreddit: subredditName,
         type: "all",
@@ -22,12 +22,12 @@ export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerC
 
     let queueItemProps: QueuedItemProperties[] = [];
 
-    // Get record of previously queued items.
+    // Get record of previously queued items
     const potentiallyQueuedItems = await context.redis.hgetall(FILTERED_ITEM_KEY);
     if (potentiallyQueuedItems) {
         console.log(`Potential Queued Store length: ${Object.keys(potentiallyQueuedItems).length}`);
 
-        // Identify any keys that were potentially queued but are not currently in modqueue.
+        // Identify any keys that were potentially queued but are not currently in mod queue
         const keysNotInQueue = Object.keys(potentiallyQueuedItems).filter(key => !modQueue.some(queueItem => queueItem.id === key));
         if (keysNotInQueue.length > 0) {
             // Remove from Redis set

@@ -112,7 +112,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     const alertThresholdForIndividualPosts = settings[AppSetting.AlertThresholdForIndividualPosts] as number | undefined;
 
-    // Check to see if any posts represent a large proportion of the modqueue
+    // Check to see if any posts represent a large proportion of the mod queue
     if (alertThreshold && alertThresholdForIndividualPosts && modQueue.length >= alertThreshold) {
         const topQueuePosts = getTopPosts(modQueue, alertThresholdForIndividualPosts);
         for (const item of topQueuePosts) {
@@ -141,6 +141,6 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         console.log(error);
     }
 
-    // Record that we're in an alerting period with an expiry of a day.
+    // Record that we're in an alerting period with an expiry of a day
     await context.redis.set(redisKey, "true", {expiration: addDays(new Date(), 1)});
 }
