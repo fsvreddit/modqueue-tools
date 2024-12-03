@@ -10,7 +10,7 @@ import {aggregateOlderData} from "./aggregator.js";
 export async function analyseQueue (_event: ScheduledJobEvent, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
 
-    // Get current mo dqueue
+    // Get current mod queue
     const modQueue = await context.reddit.getModQueue({
         subreddit: subredditName,
         type: "all",
