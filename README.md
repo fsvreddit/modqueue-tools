@@ -1,8 +1,8 @@
-Provides analytics and alerting for modqueues.
+Provides analytics and alerting for mod queues.
 
 ## Analytics
 
-This app updates a wiki page (modqueue-tools/queuestats) on your subreddit once a day with statistics on queue lengths and queue action times for the last 24 hours and for the last three months (or the app install date, whichever is later).
+This app updates a wiki page (modqueue-tools/queuestats) on your subreddit once a day with statistics on queue lengths and queue action times for the last 24 hours and for the last 3 months (or the app install date, whichever is later).
 
 It also includes a table with data for every day for the past 28 days.
 
@@ -24,12 +24,17 @@ You can also configure a percentage threshold for when an individual post will s
 
 For a guide on how to set up a webhook, [see here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
 
-## About
+## Source Code and Licence
 
-This app is open source. You can find it on Github [here](https://github.com/fsvreddit/modqueue-tools).
+This app is open source. You can find it on GitHub [here](https://github.com/fsvreddit/modqueue-tools).
 
 ## Version History
 
-v1.1: Update Devvit library version only. No functional changes.
+### v1.1
 
-v1.0.5: Fixed three bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. Also clarified help text on settings.
+* Update Devvit library version only. No functional changes.
+
+### v1.0.5
+
+* Fix 3 bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. 
+* Clarify help text on settings
