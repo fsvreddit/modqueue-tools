@@ -1,5 +1,3 @@
-# Modqueue Tools (modqueue-tools)
-
 Provides analytics and alerting for mod queues.
 
 ## Analytics
