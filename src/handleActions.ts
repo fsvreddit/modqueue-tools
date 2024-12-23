@@ -69,8 +69,8 @@ export async function handleModAction (event: ModAction, context: TriggerContext
                 console.log(`${itemId}: Removed by ${event.moderator.name} so may be queued. Added to Redis.`);
             }
         } else {
-            // Human mod, AEO or other definitive removal action, item cannot be in queue after.
-            const existingValue = await context.redis.hGet(FILTERED_ITEM_KEY, itemId);
+            // Human mod, AEO or other definitive removal action, item cannot be in queue after
+            const existingValue = await context.redis.hget(FILTERED_ITEM_KEY, itemId);
             if (existingValue) {
                 const queueItemProps = JSON.parse(existingValue) as QueuedItemProperties;
                 const secondsBeforeAction = differenceInSeconds(event.actionedAt, queueItemProps.queueDate);

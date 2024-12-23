@@ -10,7 +10,7 @@ import { aggregateOlderData } from "./aggregator.js";
 export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
     const subredditName = await getSubredditName(context);
 
-    // Get current modqueue
+    // Get current mod queue
     const modQueue = await context.reddit.getModQueue({
         subreddit: subredditName,
         type: "all",
@@ -20,7 +20,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
     console.log(`Queue length: ${modQueue.length}`);
     await recordQueueLength(modQueue.length, context);
 
-    // Get record of previously queued items.
+    // Get record of previously queued items
     const potentiallyQueuedItems = await context.redis.hGetAll(FILTERED_ITEM_KEY);
 
     console.log(`Potential Queued Store length: ${Object.keys(potentiallyQueuedItems).length}`);
@@ -29,7 +29,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
     const keysNotInQueue = Object.keys(potentiallyQueuedItems).filter(key => !modQueue.some(queueItem => queueItem.id === key));
     if (keysNotInQueue.length > 0) {
         // Remove from Redis set
-        const itemsRemoved = await context.redis.hDel(FILTERED_ITEM_KEY, keysNotInQueue);
+        const itemsRemoved = await context.redis.hdel(FILTERED_ITEM_KEY, keysNotInQueue);
         console.log(`${itemsRemoved} items removed from Redis set.`);
     }
 

@@ -133,7 +133,6 @@ export async function refreshWikiPage (context: TriggerContext) {
     try {
         wikiPage = await context.reddit.getWikiPage(subredditName, wikiPageName);
     } catch {
-        //
     }
 
     const wikiPageOptions = {
