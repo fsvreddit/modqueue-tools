@@ -29,7 +29,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
     const keysNotInQueue = Object.keys(potentiallyQueuedItems).filter(key => !modQueue.some(queueItem => queueItem.id === key));
     if (keysNotInQueue.length > 0) {
         // Remove from Redis set
-        const itemsRemoved = await context.redis.hdel(FILTERED_ITEM_KEY, keysNotInQueue);
+        const itemsRemoved = await context.redis.hDel(FILTERED_ITEM_KEY, keysNotInQueue);
         console.log(`${itemsRemoved} items removed from Redis set.`);
     }
 

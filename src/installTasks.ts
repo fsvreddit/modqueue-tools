@@ -40,7 +40,7 @@ export async function onAppInstall (event: AppInstall, context: TriggerContext) 
     }).all();
 
     // Filter down to posts or comments that are filtered
-    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy || item.removedByCategory)) as Post[];
+    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy ?? item.removedByCategory)) as Post[];
     const queuedComments = modqueue.filter(item => item instanceof Comment && item.numReports === 0) as Comment[];
 
     const filteredItems = [

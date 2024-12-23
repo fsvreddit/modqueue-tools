@@ -142,5 +142,5 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     }
 
     // Record that we're in an alerting period with an expiry of a day
-    await context.redis.set(redisKey, "true", {expiration: addDays(new Date(), 1)});
+    await context.redis.set(redisKey, "true", { expiration: addDays(new Date(), 1) });
 }
