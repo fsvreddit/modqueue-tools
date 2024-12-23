@@ -1,9 +1,9 @@
-import {Comment, Post, TriggerContext} from "@devvit/public-api";
-import {AppInstall, AppUpgrade} from "@devvit/protos";
-import {getSubredditName} from "./utility.js";
-import {QueuedItemProperties} from "./handleActions.js";
-import {FILTERED_ITEM_KEY} from "./redisHelper.js";
-import {refreshWikiPage} from "./analyticsWikiPage.js";
+import { Comment, Post, TriggerContext } from "@devvit/public-api";
+import { AppInstall, AppUpgrade } from "@devvit/protos";
+import { getSubredditName } from "./utility.js";
+import { QueuedItemProperties } from "./handleActions.js";
+import { FILTERED_ITEM_KEY } from "./redisHelper.js";
+import { refreshWikiPage } from "./analyticsWikiPage.js";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
@@ -40,17 +40,16 @@ export async function onAppInstall (event: AppInstall, context: TriggerContext) 
     }).all();
 
     // Filter down to posts or comments that are filtered
-    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy || item.removedByCategory)) as Post[];
+    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy ?? item.removedByCategory)) as Post[];
     const queuedComments = modqueue.filter(item => item instanceof Comment && item.numReports === 0) as Comment[];
 
     const filteredItems = [
-        ...queuedPosts.map(item => <QueuedItemProperties>{itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime()}),
-        ...queuedComments.map(item => <QueuedItemProperties>{itemId: item.id, postId: item.postId, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime()}),
+        ...queuedPosts.map(item => ({ itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } as QueuedItemProperties)),
+        ...queuedComments.map(item => ({ itemId: item.id, postId: item.postId, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } as QueuedItemProperties)),
     ];
 
     for (const item of filteredItems) {
-        // eslint-disable-next-line no-await-in-loop
-        await context.redis.hset(FILTERED_ITEM_KEY, {[item.itemId]: JSON.stringify(item)});
+        await context.redis.hSet(FILTERED_ITEM_KEY, { [item.itemId]: JSON.stringify(item) });
     }
 
     console.log(filteredItems);

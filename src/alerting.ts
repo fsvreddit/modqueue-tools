@@ -1,21 +1,22 @@
-import {Comment, Post, TriggerContext} from "@devvit/public-api";
-import {AppSetting} from "./settings.js";
-import {addDays, subHours} from "date-fns";
-import {ThingPrefix, formatDurationToNow, getSubredditName} from "./utility.js";
+import { Comment, Post, TriggerContext } from "@devvit/public-api";
+import { AppSetting } from "./settings.js";
+import { addDays, subHours } from "date-fns";
+import { formatDurationToNow, getSubredditName } from "./utility.js";
 import pluralize from "pluralize";
-import {QueuedItemProperties} from "./handleActions.js";
+import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
 import _ from "lodash";
+import { isLinkId } from "@devvit/shared-types/tid.js";
 
 interface QueuedPostCount {
-    postId: string,
-    count: number,
+    postId: string;
+    count: number;
 }
 
 function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
     const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
     const countedPosts = _.countBy(postIdList);
-    const postsInQueue = Object.keys(countedPosts).map(postId => <QueuedPostCount>{postId, count: countedPosts[postId]});
+    const postsInQueue = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] } as QueuedPostCount));
 
     return postsInQueue.filter(item => Math.round(100 * item.count / modQueue.length) >= threshold).sort((a, b) => b.count - a.count);
 }
@@ -46,7 +47,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     let agedItems: QueuedItemProperties[] = [];
     let oldestItem: QueuedItemProperties | undefined;
-    if (alertAgeHours && queueItemProps && queueItemProps.length > 0) {
+    if (alertAgeHours && queueItemProps.length > 0) {
         agedItems = queueItemProps.filter(item => new Date(item.queueDate) < subHours(new Date(), alertAgeHours));
         oldestItem = queueItemProps.sort((a, b) => a.queueDate - b.queueDate)[0];
     }
@@ -96,9 +97,9 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     if (agedItems.length > 0) {
         message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} ${pluralize("is", modQueue.length)} over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.`;
-        if (oldestItem && oldestItem.itemId) {
+        if (oldestItem?.itemId) {
             let target: Post | Comment;
-            if (oldestItem.itemId.startsWith(ThingPrefix.Post)) {
+            if (isLinkId(oldestItem.itemId)) {
                 target = await context.reddit.getPostById(oldestItem.itemId);
             } else {
                 target = await context.reddit.getCommentById(oldestItem.itemId);
@@ -116,7 +117,6 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     if (alertThreshold && alertThresholdForIndividualPosts && modQueue.length >= alertThreshold) {
         const topQueuePosts = getTopPosts(modQueue, alertThresholdForIndividualPosts);
         for (const item of topQueuePosts) {
-            // eslint-disable-next-line no-await-in-loop
             const post = await context.reddit.getPostById(item.postId);
             message += `* Queue items from one post make up ${Math.round(100 * item.count / modQueue.length)}% of queue entries: [${markdownEscape(post.title)}](<https://www.reddit.com${post.permalink}>)\n`;
         }
@@ -135,12 +135,12 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(params),
-            }
+            },
         );
     } catch (error) {
         console.log(error);
     }
 
     // Record that we're in an alerting period with an expiry of a day
-    await context.redis.set(redisKey, "true", {expiration: addDays(new Date(), 1)});
+    await context.redis.set(redisKey, "true", { expiration: addDays(new Date(), 1) });
 }
