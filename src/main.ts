@@ -48,7 +48,6 @@ Devvit.addTrigger({
 
 Devvit.configure({
     redditAPI: true,
-    redis: true,
     http: true,
 });
 

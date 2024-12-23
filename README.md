@@ -31,12 +31,12 @@ This app is open source. You can find it on GitHub [here](https://github.com/fsv
 
 ## Version History
 
-v1.1: 
+v1.1:
 
 - Update Devvit library version only
 - No functional changes
 
-v1.0.5: 
+v1.0.5:
 
 - Fix 3 bugs that affected subs with large queues that were present before install. It caused alerts to show inaccurate queue item age and dominant item, and show inaccurate mod action time in wiki page. 
 - Clarify help text on settings
