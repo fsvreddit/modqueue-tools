@@ -31,6 +31,10 @@ This app is open source. You can find it on GitHub [here](https://github.com/fsv
 
 ## Version History
 
+### v1.2
+
+* Update Devvit library version only, and reformat code. No functional changes.
+
 ### v1.1
 
 * Update Devvit library version only. No functional changes.
