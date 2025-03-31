@@ -31,6 +31,11 @@ This app is open source. You can find it on GitHub [here](https://github.com/fsv
 
 ## Version History
 
+### v1.2.3
+
+* Fix problem that prevents newer Discord webhooks from being used
+* Fix "1 item are over X hours old" wording
+
 ### v1.2
 
 * Update Devvit library version only, and reformat code. No functional changes.

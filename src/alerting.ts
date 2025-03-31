@@ -96,7 +96,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     message += `\n* There ${pluralize("is", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
 
     if (agedItems.length > 0) {
-        message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} ${pluralize("is", modQueue.length)} over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.`;
+        message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} ${pluralize("is", agedItems.length)} over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.`;
         if (oldestItem?.itemId) {
             let target: Post | Comment;
             if (isLinkId(oldestItem.itemId)) {
