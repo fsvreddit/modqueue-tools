@@ -3,7 +3,8 @@ import { formatDurationToNow, getSubredditName } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
 import { ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
-import _ from "lodash";
+import { max, min, sum } from "lodash";
+import json2md from "json2md";
 
 function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
@@ -40,6 +41,14 @@ function numberToBlocks (number: number, maximum: number) {
     return "█".repeat(Math.floor(blockCount)) + finalCharacter;
 }
 
+function cappedNumber (input: number, maximum = 1000): string {
+    if (input < maximum) {
+        return input.toString();
+    }
+
+    return `> ${maximum}`;
+}
+
 export async function refreshWikiPage (context: TriggerContext) {
     const wikiPageName = "modqueue-tools/queuestats";
 
@@ -51,21 +60,23 @@ export async function refreshWikiPage (context: TriggerContext) {
         // No data. Return.
     }
 
-    let pageContents = "# Modqueue Statistics\n\n";
+    const pageContents: json2md.DataObject[] = [
+        { h1: "Modqueue Statistics" },
+    ];
 
-    const earliestTimeRecorded = _.min(queueLengths.map(x => x.dateTime));
+    const earliestTimeRecorded = min(queueLengths.map(x => x.dateTime));
 
     const daysForSummaryTable = 28;
-    const summaryStart = _.max([earliestTimeRecorded, subDays(new Date(), daysForSummaryTable)]) ?? subDays(new Date(), daysForSummaryTable);
+    const summaryStart = max([earliestTimeRecorded, subDays(new Date(), daysForSummaryTable)]) ?? subDays(new Date(), daysForSummaryTable);
     const days = eachDayOfInterval({ start: summaryStart, end: subDays(new Date(), 1) }).sort(compareDesc);
 
-    const maxQueueLength = _.max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
-    const queueBarMax = _.max([maxQueueLength, 10]) ?? 10;
+    const maxQueueLength = max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
+    const queueBarMax = max([maxQueueLength, 10]) ?? 10;
+
+    const dayRows: string[][] = [];
+    const dayHeaders = ["Date", "Average Queue", "Peak Queue", "Average Time before action", "Max Time before action", "Mod Actions"];
 
     if (days.length) {
-        pageContents += "\nDate | Average Queue | Peak Queue | Average Time before action | Max Time before action | Mod Actions\n";
-        pageContents += "- | - | - | - | - | -\n";
-
         for (const day of days) {
             const queueLengthsForDay = queueLengths.filter(item => isSameDay(item.dateTime, day));
             const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
@@ -74,45 +85,60 @@ export async function refreshWikiPage (context: TriggerContext) {
                 const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample))));
                 const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
                 const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample))));
-                const maximumActionDelay = _.max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
-                const modActions = _.sum(actionDelaysForDay.map(item => item.numSamples));
+                const maximumActionDelay = max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
+                const modActions = sum(actionDelaysForDay.map(item => item.numSamples));
 
-                pageContents += `${day.toDateString()} | ${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${averageQueueLength} | ${numberToBlocks(Math.round(peakQueueLength.queueLength), queueBarMax)} ${Math.round(peakQueueLength.queueLength)} | ${secondsToFormattedDuration(averageActionDelay)} | ${secondsToFormattedDuration(maximumActionDelay)} | ${modActions}\n`;
+                dayRows.push([
+                    day.toDateString(),
+                    `${numberToBlocks(averageQueueLength, maxQueueLength / 2)} ${cappedNumber(averageQueueLength)}`,
+                    `${numberToBlocks(Math.round(peakQueueLength.queueLength), queueBarMax)} ${cappedNumber(Math.round(peakQueueLength.queueLength))}`,
+                    secondsToFormattedDuration(averageActionDelay),
+                    secondsToFormattedDuration(maximumActionDelay),
+                    cappedNumber(modActions),
+                ]);
             }
         }
     }
 
+    pageContents.push({ table: { headers: dayHeaders, rows: dayRows } });
+
     if (earliestTimeRecorded) {
-        pageContents += `\nSince ${earliestTimeRecorded.toUTCString()}:\n\n`;
+        pageContents.push({ p: `Since ${earliestTimeRecorded.toUTCString()}:` });
     } else {
-        pageContents += "\nSince app install:\n\n";
+        pageContents.push({ p: "Since app install:" });
     }
 
+    const bullets: string[] = [];
     if (queueLengths.length > 0) {
-        pageContents += `* Average queue length: ${Math.round(average(queueLengths.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample))))}\n`;
+        bullets.push(`Average queue length: ${Math.round(average(queueLengths.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample))))}`);
         const peakQueueLength = queueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
-        pageContents += `* Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}\n`;
+        bullets.push(`Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}`);
     } else {
-        pageContents += "* No queue lengths recorded in the last 24 hours.\n";
+        bullets.push("No queue lengths recorded in the last 24 hours.");
     }
 
     if (actionDelays.length > 0) {
         const samples = actionDelays.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
-        const maximum = _.max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
-        pageContents += `* Mod actions: ${_.sum(actionDelays.map(item => item.numSamples))} (excludes AutoModerator and Reddit actions)\n`;
+        const maximum = max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
+        bullets.push(`Mod actions: ${sum(actionDelays.map(item => item.numSamples))} (excludes AutoModerator and Reddit actions)`);
         if (earliestTimeRecorded) {
-            pageContents += `* Average actions/day: ${Math.round(_.sum(actionDelays.map(item => item.numSamples)) / differenceInHours(new Date(), earliestTimeRecorded) * 24)}\n`;
+            bullets.push(`Average actions/day: ${Math.round(sum(actionDelays.map(item => item.numSamples)) / differenceInHours(new Date(), earliestTimeRecorded) * 24)}`);
         }
-        pageContents += `* Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}\n`;
-        pageContents += `* Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}\n`;
+        bullets.push(`Average time to handle a queue item: ${secondsToFormattedDuration(average(samples))}`);
+        bullets.push(`Maximum time to handle a queue item: ${secondsToFormattedDuration(maximum)}`);
     } else {
-        pageContents += "* No mod actions recorded.\n";
+        bullets.push("No mod actions recorde.");
     }
 
-    pageContents += "\n##Time of day statistics\n\nThis covers the last four weeks worth of data.\n\n";
-    pageContents += "Hour | Average Queue Size | Average Action Count | Average Action Delay\n-|-|-|-|\n";
+    pageContents.push({ ul: bullets });
 
-    const maxBar = _.max([...queueLengths.filter(x => x.dateTime > summaryStart).map(x => x.maxQueueLength), ...actionDelays.filter(x => x.dateTime > summaryStart).map(x => x.numSamples)]) ?? 0;
+    pageContents.push({ h2: "Time of day statistics" });
+    pageContents.push({ p: "This covers the last four weeks worth of data." });
+
+    const timeRows: string[][] = [];
+    const timeHeadings = ["Hour", "Average Queue Size", "Average Action Count", "Average Action Delay"];
+
+    const maxBar = max([...queueLengths.filter(x => x.dateTime > summaryStart).map(x => x.maxQueueLength), ...actionDelays.filter(x => x.dateTime > summaryStart).map(x => x.numSamples)]) ?? 0;
     for (let hour = 0; hour < 24; hour++) {
         const queueSizeSamples = queueLengths.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample));
         const actionCountSamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.numSamples, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
@@ -122,10 +148,17 @@ export async function refreshWikiPage (context: TriggerContext) {
             }
         }
         const actionDelaySamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
-        pageContents += `${hour} | ${numberToBlocks(average(queueSizeSamples), maxBar)} ${Math.round(average(queueSizeSamples))} | ${numberToBlocks(average(actionCountSamples), maxBar)} ${Math.round(average(actionCountSamples))} | ${secondsToFormattedDuration(average(actionDelaySamples))}\n`;
+        timeRows.push([
+            hour.toString(),
+            `${numberToBlocks(average(queueSizeSamples), maxBar)} ${cappedNumber(Math.round(average(queueSizeSamples)))}`,
+            `${numberToBlocks(average(actionCountSamples), maxBar)} ${cappedNumber(Math.round(average(actionCountSamples)))}`,
+            secondsToFormattedDuration(average(actionDelaySamples)),
+        ]);
     }
 
-    pageContents += "\nThis app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC.\n\n";
+    pageContents.push({ table: { headers: timeHeadings, rows: timeRows } });
+
+    pageContents.push({ p: "This app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC." });
 
     const subredditName = await getSubredditName(context);
 
@@ -133,12 +166,13 @@ export async function refreshWikiPage (context: TriggerContext) {
     try {
         wikiPage = await context.reddit.getWikiPage(subredditName, wikiPageName);
     } catch {
+        //
     }
 
     const wikiPageOptions = {
         subredditName,
         page: wikiPageName,
-        content: pageContents,
+        content: json2md(pageContents),
         reason: "Updated Modqueue Tools Statistics",
     };
 

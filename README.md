@@ -31,6 +31,12 @@ This app is open source. You can find it on GitHub [here](https://github.com/fsv
 
 ## Version History
 
+### v1.2.5
+
+* If any stats are greater than 1000, indicate that this may be over 1000 due to limits in Reddit data retrieval
+* Improve reliability of install
+* Update Devvit and dependencies
+
 ### v1.2.3
 
 * Fix problem that prevents newer Discord webhooks from being used

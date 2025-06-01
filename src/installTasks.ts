@@ -1,17 +1,18 @@
-import { Comment, Post, TriggerContext } from "@devvit/public-api";
+import { Comment, JobContext, Post, TriggerContext } from "@devvit/public-api";
 import { AppInstall, AppUpgrade } from "@devvit/protos";
 import { getSubredditName } from "./utility.js";
 import { QueuedItemProperties } from "./handleActions.js";
 import { FILTERED_ITEM_KEY } from "./redisHelper.js";
-import { refreshWikiPage } from "./analyticsWikiPage.js";
+import { addSeconds } from "date-fns";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
     await Promise.all(currentJobs.map(job => context.scheduler.cancelJob(job.id)));
 
+    const randomMinute = Math.floor(Math.random() * 5);
     await context.scheduler.runJob({
         name: "analyseQueue",
-        cron: "*/5 * * * *",
+        cron: `${randomMinute}/5 * * * *`,
     });
 
     await context.scheduler.runJob({
@@ -24,7 +25,10 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
         cron: "0 5 * * *",
     });
 
-    await refreshWikiPage(context);
+    await context.scheduler.runJob({
+        name: "buildAnalytics",
+        runAt: addSeconds(new Date(), 5),
+    });
 }
 
 /**
@@ -33,6 +37,15 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
  * more accurate item ages.
  */
 export async function onAppInstall (event: AppInstall, context: TriggerContext) {
+    await onAppInstallOrUpgrade(event, context);
+
+    await context.scheduler.runJob({
+        name: "onInstall",
+        runAt: new Date(),
+    });
+}
+
+export async function onAppInstallJobHandler (_: unknown, context: JobContext) {
     const modqueue = await context.reddit.getModQueue({
         subreddit: await getSubredditName(context),
         type: "all",
@@ -51,8 +64,4 @@ export async function onAppInstall (event: AppInstall, context: TriggerContext) 
     for (const item of filteredItems) {
         await context.redis.hSet(FILTERED_ITEM_KEY, { [item.itemId]: JSON.stringify(item) });
     }
-
-    console.log(filteredItems);
-
-    await onAppInstallOrUpgrade(event, context);
 }

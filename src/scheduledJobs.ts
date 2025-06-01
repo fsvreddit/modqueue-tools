@@ -1,7 +1,7 @@
 import { JSONObject, ScheduledJobEvent, TriggerContext } from "@devvit/public-api";
 import { getSubredditName } from "./utility.js";
 import { QueuedItemProperties } from "./handleActions.js";
-import _ from "lodash";
+import { compact } from "lodash";
 import { FILTERED_ITEM_KEY, recordQueueLength } from "./redisHelper.js";
 import { checkAlerting } from "./alerting.js";
 import { refreshWikiPage } from "./analyticsWikiPage.js";
@@ -33,7 +33,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
         console.log(`${itemsRemoved} items removed from Redis set.`);
     }
 
-    const queueItemProps = _.compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
+    const queueItemProps = compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
 
     if (modQueue.length > 0) {
         await checkAlerting(modQueue, queueItemProps, context);

@@ -2,7 +2,7 @@ import { Devvit } from "@devvit/public-api";
 import { appSettings } from "./settings.js";
 import { handleCommentReport, handleModAction, handlePostReport } from "./handleActions.js";
 import { aggregateStorage, analyseQueue, buildAnalytics } from "./scheduledJobs.js";
-import { onAppInstall, onAppInstallOrUpgrade } from "./installTasks.js";
+import { onAppInstall, onAppInstallJobHandler, onAppInstallOrUpgrade } from "./installTasks.js";
 
 Devvit.addSettings(appSettings);
 
@@ -34,6 +34,11 @@ Devvit.addSchedulerJob({
 Devvit.addSchedulerJob({
     name: "aggregateStorage",
     onRun: aggregateStorage,
+});
+
+Devvit.addSchedulerJob({
+    name: "onInstall",
+    onRun: onAppInstallJobHandler,
 });
 
 Devvit.addTrigger({
