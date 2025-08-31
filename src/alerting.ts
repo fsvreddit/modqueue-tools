@@ -6,7 +6,7 @@ import pluralize from "pluralize";
 import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
 import _ from "lodash";
-import { isLinkId } from "@devvit/shared-types/tid.js";
+import { isLinkId } from "@devvit/public-api/types/tid.js";
 
 interface QueuedPostCount {
     postId: string;

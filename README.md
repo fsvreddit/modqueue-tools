@@ -4,6 +4,8 @@ Provides analytics and alerting for mod queues.
 
 This app updates a wiki page (modqueue-tools/queuestats) on your subreddit once a day with statistics on queue lengths and queue action times for the last 24 hours and for the last 3 months (or the app install date, whichever is later).
 
+**Note**: If your sub has opted in to the new wiki experience, you will **not** see the wiki page update. However, you can navigate to the equivalent on Old Reddit to see statistics, even after you have opted in. Unfortunately, there is no API support for the new wiki experience and so it is not possible to update new wiki pages yet. Once support is available, it will be added.
+
 It also includes a table with data for each day for the past 28 days.
 
 All times are in UTC.
@@ -30,6 +32,10 @@ A guide on how to set up a webhook can be found [here](https://support.discord.c
 This app is open source. You can find it on GitHub [here](https://github.com/fsvreddit/modqueue-tools).
 
 ## Version History
+
+### v1.2.6
+
+* Update Dev Platform version and README. No user facing changes in this release.
 
 ### v1.2.5
 
