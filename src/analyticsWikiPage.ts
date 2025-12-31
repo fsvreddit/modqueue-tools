@@ -1,5 +1,5 @@
 import { TriggerContext, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
-import { formatDurationToNow, getSubredditName } from "./utility.js";
+import { formatDurationToNow } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
 import { ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
@@ -71,7 +71,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     const days = eachDayOfInterval({ start: summaryStart, end: subDays(new Date(), 1) }).sort(compareDesc);
 
     const maxQueueLength = max(queueLengths.filter(item => item.dateTime > summaryStart).map(item => item.queueLength)) ?? 0;
-    const queueBarMax = max([maxQueueLength, 10]) ?? 10;
+    const queueBarMax = max([maxQueueLength, 10]);
 
     const dayRows: string[][] = [];
     const dayHeaders = ["Date", "Average Queue", "Peak Queue", "Average Time before action", "Max Time before action", "Mod Actions"];
@@ -160,7 +160,7 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     pageContents.push({ p: "This app only reports on actions and queue lengths seen since the app was installed. Mod actions includes approve/remove actions on modqueue items only, not actions taken elsewhere. All times in UTC." });
 
-    const subredditName = await getSubredditName(context);
+    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
     let wikiPage: WikiPage | undefined;
     try {

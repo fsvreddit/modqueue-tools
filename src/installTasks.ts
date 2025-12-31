@@ -1,6 +1,5 @@
 import { Comment, JobContext, Post, TriggerContext } from "@devvit/public-api";
 import { AppInstall, AppUpgrade } from "@devvit/protos";
-import { getSubredditName } from "./utility.js";
 import { QueuedItemProperties } from "./handleActions.js";
 import { FILTERED_ITEM_KEY } from "./redisHelper.js";
 import { addSeconds } from "date-fns";
@@ -47,7 +46,7 @@ export async function onAppInstall (event: AppInstall, context: TriggerContext) 
 
 export async function onAppInstallJobHandler (_: unknown, context: JobContext) {
     const modqueue = await context.reddit.getModQueue({
-        subreddit: await getSubredditName(context),
+        subreddit: context.subredditName ?? await context.reddit.getCurrentSubredditName(),
         type: "all",
         limit: 1000,
     }).all();

@@ -1,7 +1,7 @@
 import { Comment, Post, TriggerContext } from "@devvit/public-api";
 import { AppSetting } from "./settings.js";
 import { addDays, subHours } from "date-fns";
-import { formatDurationToNow, getSubredditName } from "./utility.js";
+import { formatDurationToNow } from "./utility.js";
 import pluralize from "pluralize";
 import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
@@ -84,7 +84,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         return;
     }
 
-    const subredditName = await getSubredditName(context);
+    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
     const roleId = settings[AppSetting.RoleToPing] as string | undefined;
 

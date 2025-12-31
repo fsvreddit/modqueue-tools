@@ -1,5 +1,4 @@
 import { JSONObject, ScheduledJobEvent, TriggerContext } from "@devvit/public-api";
-import { getSubredditName } from "./utility.js";
 import { QueuedItemProperties } from "./handleActions.js";
 import { compact } from "lodash";
 import { FILTERED_ITEM_KEY, recordQueueLength } from "./redisHelper.js";
@@ -8,7 +7,7 @@ import { refreshWikiPage } from "./analyticsWikiPage.js";
 import { aggregateOlderData } from "./aggregator.js";
 
 export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
-    const subredditName = await getSubredditName(context);
+    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
     // Get current mod queue
     const modQueue = await context.reddit.getModQueue({
