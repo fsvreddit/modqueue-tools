@@ -3,31 +3,40 @@ import { AppInstall, AppUpgrade } from "@devvit/protos";
 import { QueuedItemProperties } from "./handleActions.js";
 import { FILTERED_ITEM_KEY } from "./redisHelper.js";
 import { addSeconds } from "date-fns";
+import { ScheduledJob } from "./constants.js";
+import pluralize from "pluralize";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
     await Promise.all(currentJobs.map(job => context.scheduler.cancelJob(job.id)));
 
+    console.log(`Cancelled ${currentJobs.length} existing scheduled ${pluralize("job", currentJobs.length)}.`);
+
     const randomMinute = Math.floor(Math.random() * 5);
     await context.scheduler.runJob({
-        name: "analyseQueue",
+        name: ScheduledJob.AnalyseQueue,
         cron: `${randomMinute}/5 * * * *`,
     });
 
     await context.scheduler.runJob({
-        name: "buildAnalytics",
+        name: ScheduledJob.BuildAnalytics,
         cron: "1 0 * * *",
     });
 
     await context.scheduler.runJob({
-        name: "aggregateStorage",
+        name: ScheduledJob.AggregateStorage,
         cron: "0 5 * * *",
     });
 
     await context.scheduler.runJob({
-        name: "buildAnalytics",
+        name: ScheduledJob.BuildAnalytics,
         runAt: addSeconds(new Date(), 5),
     });
+
+    // Delete redundant Redis keys from older versions
+    await context.redis.del("PauseAlerting");
+
+    console.log(`Install/Upgrade tasks completed. Queue job scheduled for minute ${randomMinute} every 5 minutes.`);
 }
 
 /**

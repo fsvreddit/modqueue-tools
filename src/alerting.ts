@@ -1,11 +1,11 @@
 import { Comment, Post, TriggerContext } from "@devvit/public-api";
-import { AppSetting } from "./settings.js";
-import { addDays, subHours } from "date-fns";
+import { AppSetting, UnderThresholdAction } from "./settings.js";
+import { addDays, addMinutes, subHours } from "date-fns";
 import { formatDurationToNow } from "./utility.js";
 import pluralize from "pluralize";
 import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
-import _ from "lodash";
+import { countBy } from "lodash";
 import { isLinkId } from "@devvit/public-api/types/tid.js";
 
 interface QueuedPostCount {
@@ -15,7 +15,7 @@ interface QueuedPostCount {
 
 function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
     const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
-    const countedPosts = _.countBy(postIdList);
+    const countedPosts = countBy(postIdList);
     const postsInQueue = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] } as QueuedPostCount));
 
     return postsInQueue.filter(item => Math.round(100 * item.count / modQueue.length) >= threshold).sort((a, b) => b.count - a.count);
@@ -61,37 +61,54 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         console.log(`Alerting: Oldest item: ${formatDurationToNow(new Date(oldestItem.queueDate))}`);
     }
 
-    const redisKey = "PauseAlerting";
-    const shouldPauseAlerting = await context.redis.get(redisKey);
+    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
-    if (shouldPauseAlerting) {
-        console.log("Alerting: Alerting is paused due to previous alert being sent.");
-        if (!shouldAlert) {
-            const currentExpiry = await context.redis.expireTime(redisKey);
-            const fifteenMinutes = 15 * 60 - 30; // 30 seconds subtracted to prevent race conditions
-            if (currentExpiry <= 0 || currentExpiry > fifteenMinutes) {
-                // No longer in an alerting period. Set timeout for 15 minutes to avoid back to back alerts
-                // when in the middle of a queue cleanout
-                console.log("Alerting: Alert conditions no longer met, setting 15 minute timeout");
-                await context.redis.expire(redisKey, fifteenMinutes);
-            }
-        }
-        return;
-    }
+    const alertMessageIdKey = "AlertMessageId";
+    let alertMessageId = await context.redis.get(alertMessageIdKey);
+
+    const maxQueueLengthKey = "MaxQueueLengthObserved";
+    const previousMaxQueueLengthStr = await context.redis.get(maxQueueLengthKey);
+    const previousMaxQueueLength = previousMaxQueueLengthStr ? parseInt(previousMaxQueueLengthStr, 10) : 0;
+
+    const alertingPausedKey = "AlertingPaused";
 
     if (!shouldAlert) {
         console.log("Alerting: Conditions not met for alerting.");
+        const [underAlertAction] = settings[AppSetting.UnderThresholdAction] as UnderThresholdAction[] | undefined ?? [UnderThresholdAction.None];
+        if (underAlertAction === UnderThresholdAction.DeleteMessage && alertMessageId) {
+            console.log("Alerting: Deleting alert message as queue is under threshold.");
+            await deleteWebhookMessage(discordWebhookUrl, alertMessageId);
+        } else if (underAlertAction === UnderThresholdAction.UpdateMessage && alertMessageId) {
+            console.log("Alerting: Updating alert message as queue is under threshold.");
+            const message = `✅ The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} is now under the alerting thresholds. There ${pluralize("are", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue, and the maximum queue length seen was ${previousMaxQueueLength}.`;
+            await updateWebhookMessage(discordWebhookUrl, alertMessageId, message);
+        }
+
+        await context.redis.del(alertMessageIdKey, maxQueueLengthKey);
+
+        // Pause alerting for 15 minutes to avoid repeated alerts
+        await context.redis.set(alertingPausedKey, "", { expiration: addMinutes(new Date(), 15) });
+
         return;
     }
 
-    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
+    if (await context.redis.exists(alertingPausedKey)) {
+        console.log("Alerting: Alerting is currently paused, skipping alert.");
+        return;
+    }
+
+    if (modQueue.length > previousMaxQueueLength) {
+        await context.redis.set(maxQueueLengthKey, modQueue.length.toString());
+    }
 
     const roleId = settings[AppSetting.RoleToPing] as string | undefined;
 
-    let message = `The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} needs attention.`;
+    let message = `⚠️ The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} needs attention.`;
     if (roleId) {
         message += ` <@&${roleId}>`;
     }
+
+    message += ` As at <t:${Math.round(Date.now() / 1000)}:t>:`;
 
     message += `\n* There ${pluralize("is", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
 
@@ -122,13 +139,31 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         }
     }
 
-    try {
-        const params = {
-            content: message,
-        };
+    if (alertMessageId) {
+        await updateWebhookMessage(discordWebhookUrl, alertMessageId, message);
+        console.log("Alerting: Updated existing alert message.");
+        return;
+    }
 
-        await fetch(
-            discordWebhookUrl,
+    alertMessageId = await sendMessageToWebhook(discordWebhookUrl, message);
+
+    // Record that we're in an alerting period with an expiry of a day
+    if (alertMessageId) {
+        await context.redis.set(alertMessageIdKey, alertMessageId, { expiration: addDays(new Date(), 1) });
+    }
+}
+
+async function sendMessageToWebhook (webhookUrl: string, message: string): Promise<string | undefined> {
+    const params = {
+        content: message,
+    };
+
+    const pathParams = new URLSearchParams();
+    pathParams.append("wait", "true");
+
+    try {
+        const result = await fetch(
+            `${webhookUrl}?${pathParams}`,
             {
                 method: "post",
                 headers: {
@@ -137,10 +172,49 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
                 body: JSON.stringify(params),
             },
         );
-    } catch (error) {
-        console.log(error);
-    }
+        console.log("Webhook message sent, status:", result.status);
 
-    // Record that we're in an alerting period with an expiry of a day
-    await context.redis.set(redisKey, "true", { expiration: addDays(new Date(), 1) });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const json = await result.json();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+        return json.id;
+    } catch (error) {
+        console.error("Error sending message to webhook:", error);
+    }
+}
+
+async function updateWebhookMessage (webhookUrl: string, messageId: string, newMessage: string): Promise<void> {
+    const params = {
+        content: newMessage,
+    };
+
+    try {
+        const result = await fetch(
+            `${webhookUrl}/messages/${messageId}`,
+            {
+                method: "patch",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(params),
+            },
+        );
+        console.log("Webhook message updated, status:", result.status);
+    } catch (error) {
+        console.error("Error updating message to webhook:", error);
+    }
+}
+
+async function deleteWebhookMessage (webhookUrl: string, messageId: string): Promise<void> {
+    try {
+        const result = await fetch(
+            `${webhookUrl}/messages/${messageId}`,
+            {
+                method: "delete",
+            },
+        );
+        console.log("Webhook message deleted, status:", result.status);
+    } catch (error) {
+        console.error("Error deleting message to webhook:", error);
+    }
 }

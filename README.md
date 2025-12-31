@@ -33,6 +33,11 @@ This app is open source. You can find it on GitHub [here](https://github.com/fsv
 
 ## Version History
 
+### v1.3 (coming soon)
+
+* Discord messages now stay updated with new queue lengths while the queue is over the threshold
+* New option to allow the alert message to be deleted or updated when the queue is under the threshold (disabled by default to match previous behaviour)
+
 ### v1.2.6
 
 * Update Dev Platform version and README. No user facing changes in this release.

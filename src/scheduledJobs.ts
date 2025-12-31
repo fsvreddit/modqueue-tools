@@ -6,7 +6,7 @@ import { checkAlerting } from "./alerting.js";
 import { refreshWikiPage } from "./analyticsWikiPage.js";
 import { aggregateOlderData } from "./aggregator.js";
 
-export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
+export async function analyseQueue (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
     const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
     // Get current mod queue
@@ -34,9 +34,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
 
     const queueItemProps = compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
 
-    if (modQueue.length > 0) {
-        await checkAlerting(modQueue, queueItemProps, context);
-    }
+    await checkAlerting(modQueue, queueItemProps, context);
 }
 
 export async function buildAnalytics (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {

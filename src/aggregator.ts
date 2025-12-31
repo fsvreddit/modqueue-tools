@@ -2,7 +2,7 @@ import { TriggerContext } from "@devvit/public-api";
 import { addDays, addHours, eachHourOfInterval, startOfDay, subWeeks } from "date-fns";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { ActionDelay, QueueLength, actionDelayRedisItemToObject, queueLengthRedisItemToObject } from "./typesAndConversion.js";
-import _ from "lodash";
+import { max, mean, min } from "lodash";
 
 export async function aggregateOlderData (context: TriggerContext) {
     const aggregateByHoursEndpoint = subWeeks(startOfDay(new Date()), 1);
@@ -14,7 +14,7 @@ export async function aggregateOlderData (context: TriggerContext) {
     const actionDelayItems = await context.redis.zRange(ACTION_DELAY_KEY, 0, aggregateByHoursEndpoint.getTime(), { by: "score" });
     const actionDelays = actionDelayItems.map(actionDelayRedisItemToObject);
 
-    const minDate = _.min([...queueLengths.map(x => x.dateTime), ...actionDelays.map(x => x.dateTime)]);
+    const minDate = min([...queueLengths.map(x => x.dateTime), ...actionDelays.map(x => x.dateTime)]);
 
     if (!minDate) {
         console.log("Aggregator: Nothing to do.");
@@ -31,8 +31,8 @@ export async function aggregateOlderData (context: TriggerContext) {
         if (queueLengthsInSlice.length > 0) {
             aggregatedQueueLengths.push({
                 dateTime: slice,
-                queueLength: _.mean(queueLengthsInSlice.map(x => x.queueLength)),
-                maxQueueLength: _.max(queueLengthsInSlice.map(x => x.maxQueueLength)) ?? 0,
+                queueLength: mean(queueLengthsInSlice.map(x => x.queueLength)),
+                maxQueueLength: max(queueLengthsInSlice.map(x => x.maxQueueLength)) ?? 0,
                 numSamples: queueLengthsInSlice.length,
             });
         }
@@ -41,8 +41,8 @@ export async function aggregateOlderData (context: TriggerContext) {
         if (actionDelaysInSlice.length > 0) {
             aggregatedActionDelays.push({
                 dateTime: slice,
-                actionDelayInSeconds: _.mean(actionDelaysInSlice.map(x => x.actionDelayInSeconds)),
-                maxActionDelayInSeconds: _.max(actionDelaysInSlice.map(x => x.maxActionDelayInSeconds)) ?? 0,
+                actionDelayInSeconds: mean(actionDelaysInSlice.map(x => x.actionDelayInSeconds)),
+                maxActionDelayInSeconds: max(actionDelaysInSlice.map(x => x.maxActionDelayInSeconds)) ?? 0,
                 numSamples: actionDelaysInSlice.length,
             });
         }

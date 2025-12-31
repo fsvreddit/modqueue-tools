@@ -6,7 +6,14 @@ export enum AppSetting {
     AlertAgeHours = "alertAgeHours",
     AlertThresholdForIndividualPosts = "alertThresholdForIndividualPosts",
     DiscordWebhook = "discordWebhook",
+    UnderThresholdAction = "underThresholdAction",
     RoleToPing = "roleToPing",
+}
+
+export enum UnderThresholdAction {
+    None = "none",
+    DeleteMessage = "deleteMessage",
+    UpdateMessage = "updateMessage",
 }
 
 export const appSettings: SettingsFormField[] = [
@@ -66,6 +73,24 @@ export const appSettings: SettingsFormField[] = [
                     const webhookRegex = /^https:\/\/discord(?:app)?.com\/api\/webhooks\/\d+\//;
                     if (value && !webhookRegex.test(value)) {
                         return "Please enter a valid Discord webhook URL";
+                    }
+                },
+            },
+            {
+                name: AppSetting.UnderThresholdAction,
+                type: "select",
+                label: "Action when queue is under threshold",
+                helpText: "Choose what to do with the alert message when the queue size falls below the alert threshold.",
+                defaultValue: [UnderThresholdAction.None],
+                options: [
+                    { label: "No action (leave previous alert in place)", value: UnderThresholdAction.None },
+                    { label: "Delete Alert Message", value: UnderThresholdAction.DeleteMessage },
+                    { label: "Update Alert Message", value: UnderThresholdAction.UpdateMessage },
+                ],
+                multiSelect: false,
+                onValidate: ({ value }) => {
+                    if (value?.length !== 1) {
+                        return "Please select one action for when the queue is under threshold.";
                     }
                 },
             },
