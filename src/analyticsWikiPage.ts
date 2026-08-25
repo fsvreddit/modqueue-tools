@@ -1,10 +1,11 @@
-import { TriggerContext, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
+import { TriggerContext, WikiPage } from "@devvit/public-api";
 import { formatDurationToNow } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
-import { ActionDelay, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
+import { ActionDelay, QueueLength, WikiPagePermissionLevel, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
 import { max, min, sum } from "lodash";
 import json2md from "json2md";
+import { updateWikiPageMulti } from "@fsvreddit/fsv-devvit-helpers";
 
 function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
@@ -177,9 +178,9 @@ export async function refreshWikiPage (context: TriggerContext) {
     };
 
     if (wikiPage) {
-        await context.reddit.updateWikiPage(wikiPageOptions);
+        await updateWikiPageMulti(wikiPageOptions, context);
     } else {
-        await context.reddit.createWikiPage(wikiPageOptions);
+        await updateWikiPageMulti(wikiPageOptions, context);
         await context.reddit.updateWikiPageSettings({
             subredditName,
             page: wikiPageName,

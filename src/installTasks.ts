@@ -5,6 +5,7 @@ import { FILTERED_ITEM_KEY } from "./redisHelper.js";
 import { addSeconds } from "date-fns";
 import { ScheduledJob } from "./constants.js";
 import pluralize from "pluralize";
+import { isCommentId, isLinkId } from "@devvit/public-api/types/tid.js";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
@@ -61,8 +62,8 @@ export async function onAppInstallJobHandler (_: unknown, context: JobContext) {
     }).all();
 
     // Filter down to posts or comments that are filtered
-    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy ?? item.removedByCategory)) as Post[];
-    const queuedComments = modqueue.filter(item => item instanceof Comment && item.numReports === 0) as Comment[];
+    const queuedPosts = modqueue.filter(item => isLinkId(item.id)).map(item => item as Post).filter(item => item.removedBy ?? item.removedByCategory);
+    const queuedComments = modqueue.filter(item => isCommentId(item.id)).map(item => item as Comment).filter(item => item.numReports === 0);
 
     const filteredItems: QueuedItemProperties[] = [
         ...queuedPosts.map(item => ({ itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } satisfies QueuedItemProperties)),

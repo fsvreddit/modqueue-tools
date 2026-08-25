@@ -14,7 +14,7 @@ interface QueuedPostCount {
 }
 
 function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
-    const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
+    const postIdList = modQueue.map(item => "postId" in item ? item.postId : item.id);
     const countedPosts = countBy(postIdList);
     const postsInQueue: QueuedPostCount[] = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] }));
 
@@ -49,7 +49,7 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     let oldestItem: QueuedItemProperties | undefined;
     if (alertAgeHours && queueItemProps.length > 0) {
         agedItems = queueItemProps.filter(item => new Date(item.queueDate) < subHours(new Date(), alertAgeHours));
-        oldestItem = queueItemProps.sort((a, b) => a.queueDate - b.queueDate)[0];
+        oldestItem = [...queueItemProps].sort((a, b) => a.queueDate - b.queueDate)[0];
     }
 
     if (agedItems.length > 0 && alertAgeHours) {
