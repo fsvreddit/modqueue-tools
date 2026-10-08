@@ -8,6 +8,8 @@ export enum AppSetting {
     DiscordWebhook = "discordWebhook",
     UnderThresholdAction = "underThresholdAction",
     RoleToPing = "roleToPing",
+
+    EnableAnalyticsWiki = "enableAnalyticsWiki",
 }
 
 export enum UnderThresholdAction {
@@ -81,7 +83,7 @@ export const appSettings: SettingsFormField[] = [
                 type: "select",
                 label: "Action when queue is under threshold",
                 helpText: "Choose what to do with the alert message when the queue size falls below the alert threshold.",
-                defaultValue: [UnderThresholdAction.None],
+                defaultValue: [UnderThresholdAction.UpdateMessage],
                 options: [
                     { label: "No action (leave previous alert in place)", value: UnderThresholdAction.None },
                     { label: "Delete Alert Message", value: UnderThresholdAction.DeleteMessage },
@@ -105,6 +107,18 @@ export const appSettings: SettingsFormField[] = [
                         return "Please enter a valid Discord role ID";
                     }
                 },
+            },
+        ],
+    },
+    {
+        type: "group",
+        label: "Analytics wiki options",
+        fields: [
+            {
+                name: AppSetting.EnableAnalyticsWiki,
+                type: "boolean",
+                label: "Enable Analytics Wiki",
+                defaultValue: true,
             },
         ],
     },

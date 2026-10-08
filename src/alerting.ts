@@ -6,7 +6,8 @@ import pluralize from "pluralize";
 import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
 import { countBy } from "lodash";
-import { isLinkId } from "@devvit/public-api/types/tid.js";
+import { cancelExtraJobs, scheduleExtraJobs } from "./scheduledJobs.js";
+import { getPostOrCommentById } from "@fsvreddit/fsv-devvit-helpers";
 
 interface QueuedPostCount {
     postId: string;
@@ -21,10 +22,13 @@ function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPo
     return postsInQueue.filter(item => Math.round(100 * item.count / modQueue.length) >= threshold).sort((a, b) => b.count - a.count);
 }
 
-export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], context: TriggerContext) {
+export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProps: QueuedItemProperties[], source: "cron" | "extra", context: TriggerContext) {
     const settings = await context.settings.getAll();
     if (!settings[AppSetting.EnableAlerts]) {
         console.log("Alerting: Alerting is disabled.");
+        if (source === "extra") {
+            await cancelExtraJobs(context);
+        }
         return;
     }
 
@@ -86,8 +90,14 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
         await context.redis.del(alertMessageIdKey, maxQueueLengthKey);
 
-        // Pause alerting for 15 minutes to avoid repeated alerts
-        await context.redis.set(alertingPausedKey, "", { expiration: addMinutes(new Date(), 15) });
+        // Pause alerting for 15 minutes after an alert is cleared to avoid repeated alerts
+        if (alertMessageId) {
+            await context.redis.set(alertingPausedKey, "", { expiration: addMinutes(new Date(), 15) });
+        }
+
+        if (source === "extra") {
+            await cancelExtraJobs(context);
+        }
 
         return;
     }
@@ -110,17 +120,13 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     message += ` As at <t:${Math.round(Date.now() / 1000)}:t>:`;
 
-    message += `\n* There ${pluralize("is", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue\n`;
+    const lengthToReport = modQueue.length < 1000 ? modQueue.length.toString() : "1000+";
+    message += `\n* There ${pluralize("is", modQueue.length)} currently ${lengthToReport} ${pluralize("item", modQueue.length)} in the queue\n`;
 
     if (agedItems.length > 0) {
         message += `* ${agedItems.length} ${pluralize("item", agedItems.length)} ${pluralize("is", agedItems.length)} over ${alertAgeHours} ${pluralize("hour", alertAgeHours)} old.`;
         if (oldestItem?.itemId) {
-            let target: Post | Comment;
-            if (isLinkId(oldestItem.itemId)) {
-                target = await context.reddit.getPostById(oldestItem.itemId);
-            } else {
-                target = await context.reddit.getCommentById(oldestItem.itemId);
-            }
+            const target = await getPostOrCommentById(context.reddit, oldestItem.itemId);
             message += ` [Oldest item](<https://www.reddit.com${target.permalink}>).`;
         }
         message += "\n";
@@ -150,6 +156,9 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     // Record that we're in an alerting period with an expiry of a day
     if (alertMessageId) {
         await context.redis.set(alertMessageIdKey, alertMessageId, { expiration: addDays(new Date(), 1) });
+        if (source === "cron") {
+            await scheduleExtraJobs(context);
+        }
     }
 }
 

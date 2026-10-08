@@ -64,15 +64,3 @@ export async function aggregateOlderData (context: TriggerContext) {
 
     console.log("Aggregator: Completed.");
 }
-
-/*
-export async function recordActionDelay (itemId: string, delayInSeconds: number, context: TriggerContext) {
-    const member = `${new Date().getTime()}~${itemId}~${delayInSeconds}`;
-    await context.redis.zAdd(ACTION_DELAY_KEY, {member, score: new Date().getTime()});
-}
-
-export async function recordQueueLength (queueLength: number, context: TriggerContext) {
-    const now = new Date().getTime();
-    await context.redis.zAdd(QUEUE_LENGTH_KEY, {member: `${now}~${queueLength}`, score: now});
-}
-*/

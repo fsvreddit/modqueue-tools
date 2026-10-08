@@ -2,10 +2,11 @@ import { TriggerContext, WikiPage } from "@devvit/public-api";
 import { formatDurationToNow } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
-import { ActionDelay, QueueLength, WikiPagePermissionLevel, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
+import { ActionDelay, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
 import { max, min, sum } from "lodash";
 import json2md from "json2md";
 import { updateWikiPageMulti } from "@fsvreddit/fsv-devvit-helpers";
+import { AppSetting } from "./settings.js";
 
 function secondsToFormattedDuration (seconds: number): string {
     return formatDurationToNow(subSeconds(new Date(), seconds));
@@ -51,6 +52,12 @@ function cappedNumber (input: number, maximum = 1000): string {
 }
 
 export async function refreshWikiPage (context: TriggerContext) {
+    const featureEnabled = await context.settings.get<boolean>(AppSetting.EnableAnalyticsWiki);
+    if (!featureEnabled) {
+        console.log("Analytics wiki feature is disabled. Skipping wiki page update.");
+        return;
+    }
+
     const wikiPageName = "modqueue-tools/queuestats";
 
     const queueLengths = await getQueueLengths(context);
@@ -58,7 +65,7 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     if (queueLengths.length === 0) {
         console.log("No data exists. Skipping wiki page update.");
-        // No data. Return.
+        return;
     }
 
     const pageContents: json2md.DataObject[] = [
@@ -185,7 +192,8 @@ export async function refreshWikiPage (context: TriggerContext) {
             subredditName,
             page: wikiPageName,
             listed: true,
-            permLevel: WikiPagePermissionLevel.MODS_ONLY,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-assignment
+            permLevel: 2, // MODS_ONLY
         });
     }
 }

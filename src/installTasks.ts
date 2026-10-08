@@ -6,6 +6,7 @@ import { addSeconds } from "date-fns";
 import { ScheduledJob } from "./constants.js";
 import pluralize from "pluralize";
 import { isCommentId, isLinkId } from "@devvit/public-api/types/tid.js";
+import { AnalyseQueueJobData, recordCronMinute } from "./scheduledJobs.js";
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
@@ -14,10 +15,15 @@ export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context
     console.log(`Cancelled ${currentJobs.length} existing scheduled ${pluralize("job", currentJobs.length)}.`);
 
     const randomMinute = Math.floor(Math.random() * 5);
-    await context.scheduler.runJob({
+    await context.scheduler.runJob<AnalyseQueueJobData>({
         name: ScheduledJob.AnalyseQueue,
         cron: `${randomMinute}/5 * * * *`,
+        data: {
+            source: "cron",
+        },
     });
+
+    await recordCronMinute(randomMinute, context);
 
     await context.scheduler.runJob({
         name: ScheduledJob.BuildAnalytics,
